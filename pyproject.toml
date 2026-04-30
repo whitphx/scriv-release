@@ -1,0 +1,56 @@
+[project]
+name = "scriv-release"
+version = "0.1.0"
+description = "Changesets-style release automation on top of scriv"
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [
+    { name = "Yuichiro Tachibana (Tsuchiya)", email = "t.yic.yt@gmail.com" }
+]
+requires-python = ">=3.10"
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Topic :: Software Development :: Build Tools",
+]
+dependencies = [
+    "scriv>=1.7",
+    "tomli>=2.0; python_version<'3.11'",
+]
+
+[project.optional-dependencies]
+bump-my-version = ["bump-my-version>=0.28"]
+hatch = ["hatch>=1.12"]
+all = ["scriv-release[bump-my-version,hatch]"]
+
+[project.scripts]
+scriv-release = "scriv_release.cli:main"
+
+[project.entry-points."scriv_release.version_providers"]
+bump-my-version = "scriv_release.versioning.bump_my_version:Provider"
+hatch           = "scriv_release.versioning.hatch:Provider"
+uv              = "scriv_release.versioning.uv:Provider"
+shell           = "scriv_release.versioning.shell:Provider"
+
+[project.urls]
+Homepage = "https://github.com/whitphx/scriv-release"
+Issues = "https://github.com/whitphx/scriv-release/issues"
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "ruff>=0.6",
+    "mypy>=1.10",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.6,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.ruff.lint]
+extend-select = ["I"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
