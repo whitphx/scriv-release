@@ -1,0 +1,50 @@
+name: Release (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: Python version used to install scriv-release.
+        type: string
+        default: "3.13"
+      preview-branch:
+        description: Branch name used for the changelog preview PR.
+        type: string
+        default: scriv-release-preview
+    secrets:
+      app-id:
+        required: false
+      app-private-key:
+        required: false
+    outputs:
+      released:
+        description: "true if a release tag was pushed."
+        value: ${{ jobs.run.outputs.released }}
+      tag:
+        description: The tag pushed by the release step.
+        value: ${{ jobs.run.outputs.tag }}
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      released: ${{ steps.release.outputs.released }}
+      tag: ${{ steps.release.outputs.tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Run scriv-release
+        id: release
+        uses: whitphx/scriv-release@main
+        with:
+          app-id: ${{ secrets.app-id }}
+          app-private-key: ${{ secrets.app-private-key }}
+          python-version: ${{ inputs.python-version }}
+          preview-branch: ${{ inputs.preview-branch }}
