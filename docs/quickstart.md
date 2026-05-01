@@ -1,0 +1,101 @@
+# Quickstart
+
+This guide walks through setting up `scriv-release` in a Python project that already has, or wants to add, [`scriv`](https://github.com/nedbat/scriv)-managed changelog fragments.
+
+## 1. Install
+
+```bash
+pip install "scriv-release[bump-my-version]"
+```
+
+The `[bump-my-version]` extra installs the default version provider. Other providers are exposed via entry points (see "Version providers" below) but not all are implemented yet.
+
+## 2. Configure scriv
+
+If you don't already have a scriv config, add this to `pyproject.toml`:
+
+```toml
+[tool.scriv]
+categories = ["Added", "Changed", "Deprecated", "Removed", "Fixed", "Security", "Chore"]
+format = "md"
+md_header_level = 2
+```
+
+## 3. Configure scriv-release
+
+Add the `[tool.scriv-release]` section. All keys are optional — defaults match the table below.
+
+```toml
+[tool.scriv-release]
+version_provider = "bump-my-version"
+preview_branch = "scriv-release-preview"
+unknown_category_policy = "warn"   # "warn" | "error" | "patch"
+release_detection = "history"      # "history" | "pr-body-marker" | "auto"
+
+[tool.scriv-release.category_semver_map]
+Added = "minor"
+Changed = "minor"
+Deprecated = "minor"
+Removed = "major"
+Fixed = "patch"
+Security = "patch"
+Chore = "patch"
+```
+
+## 4. Configure bump-my-version
+
+`scriv-release` delegates the actual version bump to your chosen version provider. For `bump-my-version`, see [its docs](https://callowayproject.github.io/bump-my-version/) — the minimum is a `[tool.bumpversion]` section in `pyproject.toml` pointing at your version string.
+
+## 5. Wire up the GitHub Action
+
+Add `.github/workflows/release.yml`:
+
+```yaml
+on:
+  push:
+    branches: [main]
+
+jobs:
+  release:
+    uses: whitphx/scriv-release/.github/workflows/reusable.yml@main
+    secrets:
+      app-id: ${{ vars.RELEASE_APP_ID }}
+      app-private-key: ${{ secrets.RELEASE_APP_KEY }}
+```
+
+See [`token-setup.md`](token-setup.md) for the GitHub App and why the default `GITHUB_TOKEN` isn't enough.
+
+## 6. Author flow
+
+For each PR, contributors run:
+
+```bash
+scriv create --edit
+```
+
+This opens an editor on a new file in `changelog.d/`. Fill in the relevant section(s) (`### Added`, `### Fixed`, …) and commit it with the PR.
+
+When the PR is merged to `main`, the action opens (or updates) a "Changelog Preview for Next Release" PR. Merging that PR triggers a tagged release.
+
+## CLI cheatsheet
+
+```bash
+scriv-release bump-level     # major | minor | patch | (empty)
+scriv-release next-version   # e.g. 1.4.0
+scriv-release collect        # runs `scriv collect --version <next>`
+scriv-release print --next   # changelog body for the next version
+scriv-release tag --push     # bump + tag + push (local release)
+```
+
+## Version providers
+
+Configured via `[tool.scriv-release].version_provider`. Built-ins:
+
+| Name              | Status        | Notes                                         |
+| ----------------- | ------------- | --------------------------------------------- |
+| `bump-my-version` | Implemented   | Default. Requires the `[bump-my-version]` extra. |
+| `hatch`           | Stub          | Planned.                                      |
+| `uv`              | Stub          | Planned.                                      |
+| `shell`           | Stub          | Planned. Will read commands from env vars.    |
+
+Third parties can register additional providers via the `scriv_release.version_providers` entry-point group.
