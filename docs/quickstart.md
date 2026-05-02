@@ -8,7 +8,7 @@ This guide walks through setting up `scriv-release` in a Python project that alr
 pip install "scriv-release[bump-my-version]"
 ```
 
-The `[bump-my-version]` extra installs the default version provider. Other providers are exposed via entry points (see "Version providers" below) but not all are implemented yet.
+The `[bump-my-version]` extra installs the default version provider. Other providers (`hatch`, `uv`, `shell`) are exposed via entry points — see "Version providers" below.
 
 ## 2. Configure scriv
 
@@ -82,6 +82,7 @@ When the PR is merged to `main`, the action opens (or updates) a "Changelog Prev
 ```bash
 scriv-release bump-level     # major | minor | patch | (empty)
 scriv-release next-version   # e.g. 1.4.0
+scriv-release detect-release # bump level for an in-progress release, per release_detection
 scriv-release collect        # runs `scriv collect --version <next>`
 scriv-release print --next   # changelog body for the next version
 scriv-release tag --push     # bump + tag + push (local release)
@@ -91,11 +92,45 @@ scriv-release tag --push     # bump + tag + push (local release)
 
 Configured via `[tool.scriv-release].version_provider`. Built-ins:
 
-| Name              | Status        | Notes                                         |
-| ----------------- | ------------- | --------------------------------------------- |
-| `bump-my-version` | Implemented   | Default. Requires the `[bump-my-version]` extra. |
-| `hatch`           | Stub          | Planned.                                      |
-| `uv`              | Stub          | Planned.                                      |
-| `shell`           | Stub          | Planned. Will read commands from env vars.    |
+| Name              | Notes                                                                                 |
+| ----------------- | ------------------------------------------------------------------------------------- |
+| `bump-my-version` | Default. Requires the `[bump-my-version]` extra. Tagging/commit handled by bump-my-version's own config. |
+| `hatch`           | Uses `hatch version`. Requires `[tool.hatch.version]` to be configured (dynamic source). Tag is `v{version}`. |
+| `uv`              | Uses `uv version`. Tag is `v{version}`.                                                |
+| `shell`           | Runs user-supplied commands. See below.                                                |
 
 Third parties can register additional providers via the `scriv_release.version_providers` entry-point group.
+
+### Shell provider
+
+Configure the commands under `[tool.scriv-release.shell]`:
+
+```toml
+[tool.scriv-release]
+version_provider = "shell"
+
+[tool.scriv-release.shell]
+current = "cat VERSION"
+apply = "./scripts/bump.sh"   # receives $LEVEL and $NEW_VERSION; writes the new version into source
+# next = "..."                # optional; defaults to packaging-based major/minor/patch bump of `current`
+```
+
+The `apply` command must update version-bearing files; `scriv-release` then handles `git tag`/`git push`.
+
+## Release detection
+
+`release_detection` controls how the action knows that the current `main` HEAD is the merged preview PR (i.e. the moment to tag a release).
+
+| Mode             | Behavior                                                                                                                                       |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `history`        | Default. If HEAD has no fragments and HEAD~1 did, treat as release. Survives squash/rebase/merge.                                              |
+| `pr-body-marker` | Look up the PR for HEAD via `gh api`, parse a marker like `scriv-release-bump: minor` from the body, and use it as the bump level.             |
+| `auto`           | Try `pr-body-marker` first; fall back to `history` if no marker is present.                                                                    |
+
+The marker key defaults to `scriv-release-bump` and can be customized:
+
+```toml
+[tool.scriv-release]
+release_detection = "pr-body-marker"
+pr_body_marker_key = "release-kind"   # then PR body would contain `release-kind: minor`
+```
