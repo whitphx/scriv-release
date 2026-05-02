@@ -4,20 +4,13 @@ set -euo pipefail
 : "${GH_TOKEN:?GH_TOKEN is required}"
 : "${GITHUB_REPOSITORY:?GITHUB_REPOSITORY is required}"
 
-# HEAD has no fragments. Inspect HEAD~1: if fragments existed there,
-# this commit is the merge of a previously-opened changelog preview PR.
-current=$(git rev-parse HEAD)
-git checkout --quiet HEAD~1
-
-prev_level=$(scriv-release bump-level || true)
-
-git checkout --quiet "${current}"
+prev_level=$(scriv-release detect-release || true)
 
 if [ -z "${prev_level}" ]; then
   {
     echo "released=false"
   } >> "$GITHUB_OUTPUT"
-  echo "No fragments on HEAD~1; nothing to release."
+  echo "No release detected for HEAD; nothing to tag."
   exit 0
 fi
 

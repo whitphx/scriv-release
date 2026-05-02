@@ -4,7 +4,12 @@ import argparse
 import sys
 
 from .config import load_config
-from .orchestrate import collect_for_release, print_changelog, tag_release
+from .orchestrate import (
+    collect_for_release,
+    detect_release,
+    print_changelog,
+    tag_release,
+)
 from .policy import compute_bump_level
 from .versioning import get_provider
 
@@ -15,6 +20,13 @@ def _build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("bump-level", help="Print the bump level (major|minor|patch).")
     sub.add_parser("next-version", help="Print the next version string.")
+    sub.add_parser(
+        "detect-release",
+        help=(
+            "Print the bump level for an in-progress release based on "
+            "the configured detection mode, or empty if none."
+        ),
+    )
 
     sub.add_parser("collect", help="Run scriv collect with the auto-computed version.")
 
@@ -42,6 +54,12 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.cmd == "bump-level":
         level = compute_bump_level(config=config)
+        if level:
+            print(level)
+        return 0
+
+    if args.cmd == "detect-release":
+        level = detect_release(config=config)
         if level:
             print(level)
         return 0
