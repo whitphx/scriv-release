@@ -57,10 +57,20 @@ on:
 
 jobs:
   release:
-    uses: whitphx/scriv-release/.github/workflows/reusable.yml@main
+    permissions:
+      contents: write
+      pull-requests: write
+    uses: whitphx/scriv-release/.github/workflows/reusable.yml@v0.2.0
     secrets:
       app-id: ${{ vars.RELEASE_APP_ID }}
       app-private-key: ${{ secrets.RELEASE_APP_KEY }}
+```
+
+The action installs `scriv-release` into a private venv under `$RUNNER_TEMP` — it does not run `setup-python` or pollute the caller's site-packages, so it can sit alongside a job that already has its own Python toolchain. To pick a different version-provider extra (or pin a version), pass `install-spec`:
+
+```yaml
+    with:
+      install-spec: scriv-release[hatch]==0.2.0
 ```
 
 See [`token-setup.md`](token-setup.md) for the GitHub App and why the default `GITHUB_TOKEN` isn't enough.

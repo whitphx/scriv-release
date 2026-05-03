@@ -18,14 +18,10 @@ inputs:
     description: Branch name used for the changelog preview PR.
     required: false
     default: scriv-release-preview
-  python-version:
-    description: Python version used to install and run scriv-release.
+  install-spec:
+    description: Pip-style requirement installed into the action's private venv. Override to pin a version or pick a different version-provider extra (e.g. `scriv-release[hatch]==0.2.0`).
     required: false
-    default: "3.13"
-  install-command:
-    description: Command run after Python is set up to install scriv-release.
-    required: false
-    default: pip install 'scriv-release[bump-my-version]'
+    default: scriv-release[bump-my-version]
 
 outputs:
   bump-level:
@@ -44,14 +40,16 @@ outputs:
 runs:
   using: composite
   steps:
-    - name: Set up Python
-      uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
-      with:
-        python-version: ${{ inputs.python-version }}
-
-    - name: Install scriv-release
+    - name: Install scriv-release in an isolated venv
       shell: bash
-      run: ${{ inputs.install-command }}
+      env:
+        SPEC: ${{ inputs.install-spec }}
+      run: |
+        venv="${RUNNER_TEMP}/scriv-release-venv"
+        python3 -m venv "$venv"
+        "$venv/bin/pip" install --quiet --upgrade pip
+        "$venv/bin/pip" install --quiet "$SPEC"
+        echo "$venv/bin" >> "$GITHUB_PATH"
 
     - name: Configure git identity
       shell: bash

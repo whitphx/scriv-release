@@ -3,14 +3,14 @@ name: Release (reusable)
 on:
   workflow_call:
     inputs:
-      python-version:
-        description: Python version used to install scriv-release.
-        type: string
-        default: "3.13"
       preview-branch:
         description: Branch name used for the changelog preview PR.
         type: string
         default: scriv-release-preview
+      install-spec:
+        description: Pip-style requirement installed into the action's private venv. Override to pin a version or pick a different version-provider extra.
+        type: string
+        default: scriv-release[bump-my-version]
     secrets:
       app-id:
         required: false
@@ -42,9 +42,9 @@ jobs:
 
       - name: Run scriv-release
         id: release
-        uses: whitphx/scriv-release@3a30c62354121f2f7b9416bbefa6bd9f241f7409 # v0.1.0
+        uses: whitphx/scriv-release@v0.2.0
         with:
           app-id: ${{ secrets.app-id }}
           app-private-key: ${{ secrets.app-private-key }}
-          python-version: ${{ inputs.python-version }}
           preview-branch: ${{ inputs.preview-branch }}
+          install-spec: ${{ inputs.install-spec }}
