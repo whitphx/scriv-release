@@ -5,9 +5,3 @@ version: 3
 files:
   - pattern: .github/workflows/*.yml
   - pattern: action.yml
-
-ignore_actions:
-  # Self-reference inside the reusable workflow; will be replaced with a real
-  # tag (e.g. @v0.1.0) once the first release is cut.
-  - name: whitphx/scriv-release
-    ref: main
