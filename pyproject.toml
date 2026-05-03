@@ -54,3 +54,7 @@ extend-select = ["I"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[[tool.mypy.overrides]]
+module = ["scriv.*"]
+ignore_missing_imports = true
