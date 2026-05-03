@@ -19,9 +19,9 @@ inputs:
     required: false
     default: scriv-release-preview
   install-spec:
-    description: Pip-style requirement installed into the action's private venv. Override to pin a version or pick a different version-provider extra (e.g. `scriv-release[hatch]==0.2.0`).
+    description: Pip-style requirement to install. When empty (the default), scriv-release is installed from the action's own checkout under $GITHUB_ACTION_PATH with the bump-my-version extra, so the runtime package version always matches the action ref. Override to use a published wheel or a different extra (e.g. `scriv-release[hatch]==0.2.0`).
     required: false
-    default: scriv-release[bump-my-version]
+    default: ""
 
 outputs:
   bump-level:
@@ -48,7 +48,11 @@ runs:
         venv="${RUNNER_TEMP}/scriv-release-venv"
         python3 -m venv "$venv"
         "$venv/bin/pip" install --quiet --upgrade pip
-        "$venv/bin/pip" install --quiet "$SPEC"
+        if [ -n "$SPEC" ]; then
+          "$venv/bin/pip" install --quiet "$SPEC"
+        else
+          "$venv/bin/pip" install --quiet "${GITHUB_ACTION_PATH}[bump-my-version]"
+        fi
         echo "$venv/bin" >> "$GITHUB_PATH"
 
     - name: Configure git identity

@@ -8,9 +8,9 @@ on:
         type: string
         default: scriv-release-preview
       install-spec:
-        description: Pip-style requirement installed into the action's private venv. Override to pin a version or pick a different version-provider extra.
+        description: Pip-style requirement installed into the action's private venv. Empty (the default) installs scriv-release from the pinned action checkout itself, so the runtime version matches the action ref.
         type: string
-        default: scriv-release[bump-my-version]
+        default: ""
     secrets:
       app-id:
         required: false
