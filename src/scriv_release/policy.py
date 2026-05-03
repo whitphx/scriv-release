@@ -21,7 +21,9 @@ def compute_bump_level(*, config: Config) -> BumpLevel | None:
     entries = scriv.combine_fragments(fragments)
     levels: set[BumpLevel] = set()
     for category in entries.keys():
-        mapped = config.category_semver_map.get(category)
+        mapped = (
+            config.category_semver_map.get(category) if category is not None else None
+        )
         if mapped is not None:
             levels.add(mapped)  # type: ignore[arg-type]
             continue
