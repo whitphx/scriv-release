@@ -42,7 +42,7 @@ jobs:
 
       - name: Run scriv-release
         id: release
-        uses: whitphx/scriv-release@v0.2.0
+        uses: whitphx/scriv-release@v0.2.3
         with:
           app-id: ${{ secrets.app-id }}
           app-private-key: ${{ secrets.app-private-key }}
