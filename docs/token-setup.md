@@ -11,12 +11,20 @@ There are two options.
 
 When the workflow pushes a tag using the default `GITHUB_TOKEN`, GitHub does **not** trigger downstream workflows (e.g. your "publish to PyPI on tag" workflow). This is by design — to prevent infinite recursion.
 
-To make tag-push trigger downstream workflows, mint the token from a GitHub App:
+To make tag-push trigger downstream workflows, mint the token from a GitHub App that you own. `scriv-release` provides a manifest so you can register the App in one click:
 
-1. Create a GitHub App in your org or user account.
-   - Permissions: `Contents: Read & write`, `Pull requests: Read & write`.
+### Quick install (recommended)
+
+Open **<https://whitphx.github.io/scriv-release/install-app/>** and click *Create on your personal account* (or fill the org-name field for an org install). GitHub's confirmation page is pre-populated with the recommended permissions; submit, and the App is registered under your account. The page then redirects you back with step-by-step instructions for generating a key, installing the App on your repo, and setting the secrets.
+
+### Manual setup
+
+If you'd rather do it by hand, the same recipe:
+
+1. Create a GitHub App in your org or user account at <https://github.com/settings/apps/new>.
+   - Repository permissions: `Contents: Read and write`, `Pull requests: Read and write`.
    - Subscribe to events: none required.
-2. Install the app on the repo (or the whole org).
+2. Install the App on the repo (or the whole org).
 3. Generate a private key, copy it.
 4. In the repo settings:
    - Add a repository **variable** `RELEASE_APP_ID` set to the App's numeric ID.
