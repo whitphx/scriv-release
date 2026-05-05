@@ -18,9 +18,8 @@ git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHU
 
 scriv-release tag --level "${prev_level}"
 
-git push origin HEAD --follow-tags
-
 new_tag=$(git describe --tags --exact-match HEAD)
+git push origin "refs/tags/${new_tag}"
 
 {
   echo "released=true"
