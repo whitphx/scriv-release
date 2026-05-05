@@ -47,7 +47,13 @@ jobs:
           app-private-key: ${{ secrets.RELEASE_APP_KEY }}
 ```
 
-See [`docs/quickstart.md`](docs/quickstart.md) and [`docs/token-setup.md`](docs/token-setup.md).
+`RELEASE_APP_ID` and `RELEASE_APP_KEY` come from a GitHub App that you own. The action mints a short-lived installation token from the App so the tag-push it does at release time can trigger downstream workflows (the default `GITHUB_TOKEN` cannot — by design, to avoid recursion). To skip the manual App-creation flow, open
+
+> **<https://whitphx.github.io/scriv-release/install-app/>**
+
+and click *Create on your personal account* (or fill the org name). GitHub's confirmation page is pre-populated with the recommended permissions (`contents: write`, `pull_requests: write`); submit, and the App is registered under your account. The page then walks you through generating a key, installing the App on the repo, and setting the secrets. See [`docs/token-setup.md`](docs/token-setup.md) for the longer explanation and a manual fallback.
+
+For end-to-end onboarding, see [`docs/quickstart.md`](docs/quickstart.md).
 
 ## How it works
 
