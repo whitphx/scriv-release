@@ -27,12 +27,24 @@ on:
   push:
     branches: [main]
 
+permissions: {}
+
 jobs:
   release:
-    uses: whitphx/scriv-release/.github/workflows/reusable.yml@v1
-    secrets:
-      app-id: ${{ vars.RELEASE_APP_ID }}
-      app-private-key: ${{ secrets.RELEASE_APP_KEY }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: whitphx/scriv-release@v0.3.0
+        with:
+          app-id: ${{ vars.RELEASE_APP_ID }}
+          app-private-key: ${{ secrets.RELEASE_APP_KEY }}
 ```
 
 See [`docs/quickstart.md`](docs/quickstart.md) and [`docs/token-setup.md`](docs/token-setup.md).

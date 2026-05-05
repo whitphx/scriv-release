@@ -5,10 +5,3 @@ version: 3
 files:
   - pattern: .github/workflows/*.yml
   - pattern: action.yml
-
-ignore_actions:
-  # Self-reference inside the reusable workflow. Kept as a version tag (not
-  # a commit SHA) so that the reusable workflow at tag vX.Y.Z always resolves
-  # the action at the same vX.Y.Z. SHA-pinning here would be self-referential.
-  - name: whitphx/scriv-release
-    ref: v\d+\.\d+\.\d+

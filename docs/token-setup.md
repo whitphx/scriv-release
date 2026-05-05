@@ -26,13 +26,22 @@ To make tag-push trigger downstream workflows, mint the token from a GitHub App:
 ```yaml
 jobs:
   release:
-    uses: whitphx/scriv-release/.github/workflows/reusable.yml@main
-    secrets:
-      app-id: ${{ vars.RELEASE_APP_ID }}
-      app-private-key: ${{ secrets.RELEASE_APP_KEY }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: whitphx/scriv-release@v0.3.0
+        with:
+          app-id: ${{ vars.RELEASE_APP_ID }}
+          app-private-key: ${{ secrets.RELEASE_APP_KEY }}
 ```
 
-The reusable workflow internally uses [`actions/create-github-app-token`](https://github.com/actions/create-github-app-token) to mint a short-lived installation token.
+The action internally uses [`actions/create-github-app-token`](https://github.com/actions/create-github-app-token) to mint a short-lived installation token.
 
 ## Default `GITHUB_TOKEN` (limited)
 
@@ -41,18 +50,24 @@ If you don't need tag-push to trigger downstream workflows (e.g. you publish man
 ```yaml
 jobs:
   release:
-    uses: whitphx/scriv-release/.github/workflows/reusable.yml@main
-    # no secrets needed
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: whitphx/scriv-release@v0.3.0
 ```
-
-You'll still need the workflow's `permissions` block to grant `contents: write` and `pull-requests: write`, which the reusable workflow already does.
 
 ## Using a personal access token (PAT)
 
-Discouraged but possible: pass a fine-grained PAT as `app-private-key` is not the right shape — instead, use the action directly (Layer 2) and pass `github-token`:
+Discouraged but possible: pass a fine-grained PAT via `github-token`:
 
 ```yaml
-- uses: whitphx/scriv-release@main
+- uses: whitphx/scriv-release@v0.3.0
   with:
     github-token: ${{ secrets.MY_PAT }}
 ```

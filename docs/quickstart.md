@@ -55,22 +55,32 @@ on:
   push:
     branches: [main]
 
+permissions: {}
+
 jobs:
   release:
+    runs-on: ubuntu-latest
     permissions:
       contents: write
       pull-requests: write
-    uses: whitphx/scriv-release/.github/workflows/reusable.yml@v0.2.0
-    secrets:
-      app-id: ${{ vars.RELEASE_APP_ID }}
-      app-private-key: ${{ secrets.RELEASE_APP_KEY }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: whitphx/scriv-release@v0.3.0
+        with:
+          app-id: ${{ vars.RELEASE_APP_ID }}
+          app-private-key: ${{ secrets.RELEASE_APP_KEY }}
 ```
 
-The action installs `scriv-release` into a private venv under `$RUNNER_TEMP` — it does not run `setup-python` or pollute the caller's site-packages, so it can sit alongside a job that already has its own Python toolchain. By default the install source is the action's own pinned checkout (`$GITHUB_ACTION_PATH[bump-my-version]`), so the workflow ref is the only place a version is named: `@v0.2.0` always installs the v0.2.0 source. To use a different extra or a published wheel, pass `install-spec` (any pip-style requirement):
+The action installs `scriv-release` into a private venv under `$RUNNER_TEMP` — it does not run `setup-python` or pollute the caller's site-packages, so it can sit alongside a job that already has its own Python toolchain. By default the install source is the action's own pinned checkout (`$GITHUB_ACTION_PATH[bump-my-version]`), so the workflow ref is the only place a version is named: `@v0.3.0` always installs the v0.3.0 source. To use a different extra or a published wheel, pass `install-spec` (any pip-style requirement):
 
 ```yaml
-    with:
-      install-spec: scriv-release[hatch] @ git+https://github.com/whitphx/scriv-release@v0.2.0
+      - uses: whitphx/scriv-release@v0.3.0
+        with:
+          install-spec: scriv-release[hatch]==0.3.0
 ```
 
 See [`token-setup.md`](token-setup.md) for the GitHub App and why the default `GITHUB_TOKEN` isn't enough.
