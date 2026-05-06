@@ -11,8 +11,8 @@ hide:
 [changesets]: https://github.com/changesets/changesets
 [scriv]: https://github.com/nedbat/scriv
 
-[:material-rocket-launch: Install the GitHub App](install-app/){ .md-button .md-button--primary }
-[:material-book-open-variant: Read the quickstart](quickstart.md){ .md-button }
+[:material-book-open-variant: Read the quickstart](quickstart.md){ .md-button .md-button--primary }
+[:material-github: View on GitHub](https://github.com/whitphx/scriv-release){ .md-button }
 
 ---
 
@@ -97,4 +97,16 @@ jobs:
           app-private-key: ${{ secrets.RELEASE_APP_KEY }}
 ```
 
-Then [register the GitHub App](install-app/) for the `RELEASE_APP_ID` / `RELEASE_APP_KEY` secrets and you're done. See [Quickstart](quickstart.md) for the full setup, and [Token setup](token-setup.md) for the App rationale and manual fallback.
+The full walkthrough — `scriv` config, category-to-semver mapping, version-provider choice, author flow — lives in the [Quickstart](quickstart.md).
+
+---
+
+## Set up the GitHub App
+
+The action references two secrets, `RELEASE_APP_ID` and `RELEASE_APP_KEY`, that come from a GitHub App you own. The App mints a short-lived installation token so the tag-push the action does at release time can trigger your downstream workflows — the default `GITHUB_TOKEN` deliberately can't, to avoid recursion.
+
+`scriv-release` ships a manifest so you can register a pre-configured App in one click:
+
+[:material-rocket-launch: Install the GitHub App](install-app/){ .md-button .md-button--primary }
+
+The page walks you through generating the key, installing the App on the repo, and wiring the secrets. See [Token setup](token-setup.md) for the manual fallback and the rationale.
