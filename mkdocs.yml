@@ -59,6 +59,7 @@ markdown_extensions:
 
 nav:
   - Home: index.md
+  - The changesets pattern: changesets.md
   - Quickstart: quickstart.md
   - Token setup: token-setup.md
   - Install the App: install-app/index.html

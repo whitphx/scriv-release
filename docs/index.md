@@ -6,9 +6,9 @@ hide:
 
 # Ship releases without leaving the PR
 
-`scriv-release` opens a "Changelog Preview" PR when fragments are pending, then tags a release the moment that PR is merged. It's the [Changesets][changesets] workflow, brought to Python on top of [`scriv`][scriv].
+`scriv-release` opens a "Changelog Preview" PR when fragments are pending, then tags a release the moment that PR is merged. It's the [Changesets][changesets] workflow, brought to Python on top of [`scriv`][scriv]. New to that pattern? Read [The changesets pattern](changesets.md) for the *why*.
 
-[changesets]: https://github.com/changesets/changesets
+[changesets]: changesets.md
 [scriv]: https://github.com/nedbat/scriv
 
 [:material-book-open-variant: Read the quickstart](quickstart.md){ .md-button .md-button--primary }
