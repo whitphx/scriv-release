@@ -16,6 +16,17 @@ hide:
 
 ---
 
+## The problem
+
+Shipping a release keeps three things in sync — the **version** in your source, the **changelog**, and the **tag** — across many PRs from many authors. The conventional approaches force a tradeoff:
+
+- Edit `CHANGELOG.md` directly → every PR conflicts at the top of the file.
+- Parse commit messages (Conventional Commits, `semantic-release`, …) → squash and rebase mangle the format, merge commits introduce subjects nobody wrote, and reviewers end up policing prose instead of code.
+
+`scriv-release` records each change as its own file in `changelog.d/` (no conflicts) and decides releases from working-tree state (survives any merge style). The longer story — and why this is nicer than the alternatives — is in [The changesets pattern](changesets.md).
+
+---
+
 ## How it works
 
 <div class="grid cards" markdown>
