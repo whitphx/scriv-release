@@ -15,11 +15,61 @@ def collect_for_release(*, config: Config) -> str | None:
         return None
     provider = get_provider(config.version_provider)
     next_version = provider.next(level)
+    existing = detect_version_collision(next_version)
+    if existing is not None:
+        raise SystemExit(_collision_message(next_version, existing))
     subprocess.run(
         ["scriv", "collect", "--version", next_version],
         check=True,
     )
     return next_version
+
+
+def detect_version_collision(version: str) -> str | None:
+    """Return the existing changelog entry title if `version` is already present, else None.
+
+    Mirrors scriv's own collision check (see scriv.collect): an entry whose parsed
+    Version matches the candidate is treated as a collision. The candidate is also
+    parsed via scriv's Version so the comparison is symmetric with what scriv would
+    detect itself.
+    """
+    from scriv.scriv import Scriv
+    from scriv.util import Version
+
+    target = Version(version)
+    if not target:
+        return None
+    scriv = Scriv()
+    changelog = scriv.changelog()
+    changelog.read()
+    for etitle in changelog.entries().keys():
+        if etitle is None:
+            continue
+        eversion = Version.from_text(etitle)
+        if eversion is not None and eversion == target:
+            return etitle
+    return None
+
+
+def _collision_message(version: str, existing: str) -> str:
+    return (
+        f"\nThe changelog already has an entry for version {version} "
+        f"(found {existing!r}).\n"
+        f"\n"
+        f"This usually means a previous release attempt updated the changelog\n"
+        f"but never pushed the v{version} tag — leaving the project in an\n"
+        f"inconsistent state. The version provider sees an older tag as current\n"
+        f"and recomputes the same next-version on every subsequent run.\n"
+        f"\n"
+        f"To recover, find the commit that introduced the {existing!r} entry\n"
+        f'(typically the merge of the previous "Changelog Preview" PR) and tag it:\n'
+        f"\n"
+        f"  git tag -a v{version} <commit> -m 'Release {version}'\n"
+        f"  git push origin v{version}\n"
+        f"\n"
+        f"After that, the next scriv-release run will compute the next-version\n"
+        f"correctly.\n"
+    )
 
 
 def print_changelog(*, version: str) -> str:

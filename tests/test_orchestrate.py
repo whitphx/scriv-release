@@ -156,3 +156,84 @@ def test_detect_release_marker_mode_no_repo_env(
     config = Config(release_detection="pr-body-marker")
     assert orchestrate.detect_release(config=config) is None
     assert all(c[0] != "gh" for c in calls)
+
+
+_SCRIV_MD = """\
+[tool.scriv]
+categories = ["Added", "Fixed"]
+format = "md"
+md_header_level = 2
+"""
+
+_CHANGELOG_WITH_065 = """\
+# Changelog
+
+<!-- scriv-insert-here -->
+
+<a id='changelog-0.65.1'></a>
+## 0.65.1 — 2026-05-04
+
+### Chore
+
+- Migrate the changelog/release workflow to the scriv-release reusable workflow.
+
+<a id='changelog-0.65.0'></a>
+## 0.65.0 — 2026-04-20
+
+### Added
+
+- Initial.
+"""
+
+
+def _setup_scriv_repo(tmp_path: Any, changelog_text: str) -> None:
+    (tmp_path / "pyproject.toml").write_text(_SCRIV_MD, encoding="utf-8")
+    (tmp_path / "CHANGELOG.md").write_text(changelog_text, encoding="utf-8")
+    (tmp_path / "changelog.d").mkdir()
+
+
+def test_detect_version_collision_finds_existing_entry(
+    tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _setup_scriv_repo(tmp_path, _CHANGELOG_WITH_065)
+    monkeypatch.chdir(tmp_path)
+    assert orchestrate.detect_version_collision("0.65.1") == "0.65.1 — 2026-05-04"
+
+
+def test_detect_version_collision_returns_none_when_absent(
+    tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _setup_scriv_repo(tmp_path, _CHANGELOG_WITH_065)
+    monkeypatch.chdir(tmp_path)
+    assert orchestrate.detect_version_collision("0.65.2") is None
+
+
+def test_collect_for_release_raises_on_collision(
+    tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _setup_scriv_repo(tmp_path, _CHANGELOG_WITH_065)
+    (tmp_path / "changelog.d" / "a.md").write_text(
+        "### Fixed\n\n- a fix\n", encoding="utf-8"
+    )
+    monkeypatch.chdir(tmp_path)
+
+    class FakeProvider:
+        name = "test"
+
+        def current(self) -> str:
+            return "0.65.0"
+
+        def next(self, level: str) -> str:
+            return "0.65.1"
+
+        def apply(self, level: str, *, tag: bool, commit: bool, push: bool) -> str:
+            return "0.65.1"
+
+    monkeypatch.setattr(orchestrate, "get_provider", lambda name: FakeProvider())
+
+    config = Config(version_provider="test")
+    with pytest.raises(SystemExit) as exc:
+        orchestrate.collect_for_release(config=config)
+    msg = str(exc.value)
+    assert "0.65.1" in msg
+    assert "git tag" in msg  # the recovery hint

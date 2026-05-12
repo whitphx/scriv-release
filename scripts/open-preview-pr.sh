@@ -7,7 +7,7 @@ set -euo pipefail
 : "${PREVIEW_BRANCH:?PREVIEW_BRANCH is required}"
 : "${NEXT_VERSION:?NEXT_VERSION is required}"
 
-scriv collect --version "${NEXT_VERSION}"
+scriv-release collect
 
 git add -A
 git commit -m "Preview changelog for next release (${NEXT_VERSION})"
