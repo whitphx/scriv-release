@@ -91,9 +91,7 @@ def test_unknown_category_error_policy_raises(
         ("minor", "1.2.3", "minor"),
     ],
 )
-def test_zero_major_policy_downshift(
-    level: str, current: str, expected: str
-) -> None:
+def test_zero_major_policy_downshift(level: str, current: str, expected: str) -> None:
     assert (
         apply_zero_major_policy(level, current_version=current, policy="downshift")  # type: ignore[arg-type]
         == expected

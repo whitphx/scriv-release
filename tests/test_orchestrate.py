@@ -298,7 +298,9 @@ def test_compute_next_version_returns_none_when_no_fragments(
     provider = _RecordingProvider(current="0.5.0")
     monkeypatch.setattr(orchestrate, "get_provider", lambda name: provider)
 
-    assert orchestrate.compute_next_version(config=Config(version_provider="test")) is None
+    assert (
+        orchestrate.compute_next_version(config=Config(version_provider="test")) is None
+    )
 
 
 def test_tag_release_applies_zero_major_policy(monkeypatch: pytest.MonkeyPatch) -> None:
