@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 
 from scriv_release.config import Config
-from scriv_release.policy import compute_bump_level
+from scriv_release.policy import apply_zero_major_policy, compute_bump_level
 
 _SCRIV_CONFIG = """\
 [tool.scriv]
@@ -77,3 +77,40 @@ def test_unknown_category_error_policy_raises(
     monkeypatch.chdir(tmp_path)
     with pytest.raises(ValueError):
         compute_bump_level(config=Config(unknown_category_policy="error"))
+
+
+@pytest.mark.parametrize(
+    "level,current,expected",
+    [
+        ("major", "0.5.0", "minor"),
+        ("major", "0.0.0", "minor"),
+        ("major", "1.2.3", "major"),
+        ("major", "2.0.0", "major"),
+        ("minor", "0.5.0", "minor"),
+        ("patch", "0.5.0", "patch"),
+        ("minor", "1.2.3", "minor"),
+    ],
+)
+def test_zero_major_policy_downshift(
+    level: str, current: str, expected: str
+) -> None:
+    assert (
+        apply_zero_major_policy(level, current_version=current, policy="downshift")  # type: ignore[arg-type]
+        == expected
+    )
+
+
+@pytest.mark.parametrize(
+    "level,current",
+    [
+        ("major", "0.5.0"),
+        ("major", "0.0.0"),
+        ("minor", "0.5.0"),
+        ("patch", "0.5.0"),
+    ],
+)
+def test_zero_major_policy_strict_is_passthrough(level: str, current: str) -> None:
+    assert (
+        apply_zero_major_policy(level, current_version=current, policy="strict")  # type: ignore[arg-type]
+        == level
+    )

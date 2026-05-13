@@ -6,12 +6,12 @@ import sys
 from .config import load_config
 from .orchestrate import (
     collect_for_release,
+    compute_next_version,
     detect_release,
     print_changelog,
     tag_release,
 )
 from .policy import compute_bump_level
-from .versioning import get_provider
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -65,11 +65,11 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.cmd == "next-version":
-        level = compute_bump_level(config=config)
-        if level is None:
+        result = compute_next_version(config=config)
+        if result is None:
             print("No version bump needed.", file=sys.stderr)
             return 0
-        print(get_provider(config.version_provider).next(level))
+        print(result[1])
         return 0
 
     if args.cmd == "collect":
@@ -82,10 +82,10 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.cmd == "print":
         if args.use_next:
-            level = compute_bump_level(config=config)
-            if level is None:
+            result = compute_next_version(config=config)
+            if result is None:
                 return 0
-            version = get_provider(config.version_provider).next(level)
+            version = result[1]
         else:
             version = args.version
         sys.stdout.write(print_changelog(version=version))

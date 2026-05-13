@@ -3,9 +3,10 @@ from __future__ import annotations
 import warnings
 from typing import Literal
 
+from packaging.version import Version
 from scriv.scriv import Scriv
 
-from .config import Config
+from .config import Config, ZeroMajorPolicy
 
 BumpLevel = Literal["major", "minor", "patch"]
 
@@ -40,3 +41,18 @@ def compute_bump_level(*, config: Config) -> BumpLevel | None:
         if level in levels:
             return level
     return None
+
+
+def apply_zero_major_policy(
+    level: BumpLevel, *, current_version: str, policy: ZeroMajorPolicy
+) -> BumpLevel:
+    # SemVer §4: 0.x.y is unstable; a "major" bump stays inside 0.x rather
+    # than graduating to 1.0.0. "strict" opts out — e.g. when the maintainer
+    # is ready to graduate.
+    if policy == "strict":
+        return level
+    if level != "major":
+        return level
+    if Version(current_version).major != 0:
+        return level
+    return "minor"

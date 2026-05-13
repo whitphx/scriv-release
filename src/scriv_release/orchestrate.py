@@ -5,16 +5,28 @@ import re
 import subprocess
 
 from .config import Config, load_config
-from .policy import BumpLevel, compute_bump_level
+from .policy import BumpLevel, apply_zero_major_policy, compute_bump_level
 from .versioning import get_provider
 
 
-def collect_for_release(*, config: Config) -> str | None:
+def compute_next_version(*, config: Config) -> tuple[BumpLevel, str] | None:
     level = compute_bump_level(config=config)
     if level is None:
         return None
     provider = get_provider(config.version_provider)
-    next_version = provider.next(level)
+    effective = apply_zero_major_policy(
+        level,
+        current_version=provider.current(),
+        policy=config.zero_major_policy,
+    )
+    return effective, provider.next(effective)
+
+
+def collect_for_release(*, config: Config) -> str | None:
+    result = compute_next_version(config=config)
+    if result is None:
+        return None
+    _, next_version = result
     existing = detect_version_collision(next_version)
     if existing is not None:
         raise SystemExit(_collision_message(next_version, existing))
@@ -84,7 +96,12 @@ def print_changelog(*, version: str) -> str:
 
 def tag_release(*, level: BumpLevel, config: Config, push: bool = False) -> str:
     provider = get_provider(config.version_provider)
-    return provider.apply(level, tag=True, commit=False, push=push)
+    effective = apply_zero_major_policy(
+        level,
+        current_version=provider.current(),
+        policy=config.zero_major_policy,
+    )
+    return provider.apply(effective, tag=True, commit=False, push=push)
 
 
 def parse_marker(body: str, *, key: str) -> BumpLevel | None:

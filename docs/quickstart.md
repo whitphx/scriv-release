@@ -31,6 +31,7 @@ version_provider = "bump-my-version"
 preview_branch = "scriv-release-preview"
 unknown_category_policy = "warn"   # "warn" | "error" | "patch"
 release_detection = "history"      # "history" | "pr-body-marker" | "auto"
+zero_major_policy = "downshift"    # "downshift" | "strict"
 
 [tool.scriv-release.category_semver_map]
 Added = "minor"
@@ -41,6 +42,17 @@ Fixed = "patch"
 Security = "patch"
 Chore = "patch"
 ```
+
+### `zero_major_policy`
+
+Per [SemVer §4](https://semver.org/#spec-item-4), `0.x.y` releases have no stable public API and may break at any minor bump. `zero_major_policy` controls how this interacts with `category_semver_map` while the current version's major is `0`:
+
+| Mode         | Behavior while `major == 0`                                                                              |
+| ------------ | -------------------------------------------------------------------------------------------------------- |
+| `downshift`  | Default. A `"major"`-level fragment (e.g. `Removed`) bumps the **minor** position. `0.5.0` → `0.6.0`.    |
+| `strict`     | Apply bumps positionally regardless. `0.5.0` + `Removed` → `1.0.0`.                                      |
+
+When you're ready to graduate to `1.0.0`, set `zero_major_policy = "strict"` (or manually set the version to `1.0.0` in your version-bearing file before the next release). Once the major is `1` or higher this setting is a no-op.
 
 ## 4. Configure bump-my-version
 
