@@ -208,6 +208,127 @@ def test_detect_version_collision_returns_none_when_absent(
     assert orchestrate.detect_version_collision("0.65.2") is None
 
 
+class _RecordingProvider:
+    """Provider double that records the level it was asked to apply."""
+
+    name = "test"
+
+    def __init__(self, current: str) -> None:
+        self._current = current
+        self.next_calls: list[str] = []
+        self.apply_calls: list[str] = []
+
+    def current(self) -> str:
+        return self._current
+
+    def next(self, level: str) -> str:
+        self.next_calls.append(level)
+        return f"next-for-{level}"
+
+    def apply(self, level: str, *, tag: bool, commit: bool, push: bool) -> str:
+        self.apply_calls.append(level)
+        return f"applied-{level}"
+
+
+_SCRIV_CONFIG_FULL = """\
+[tool.scriv]
+categories = ["Added", "Changed", "Deprecated", "Removed", "Fixed", "Security", "Chore"]
+format = "md"
+md_header_level = 2
+"""
+
+
+def _setup_with_fragment(tmp_path: Any, fragment: tuple[str, str]) -> None:
+    (tmp_path / "pyproject.toml").write_text(_SCRIV_CONFIG_FULL, encoding="utf-8")
+    frag_dir = tmp_path / "changelog.d"
+    frag_dir.mkdir()
+    name, body = fragment
+    (frag_dir / name).write_text(body, encoding="utf-8")
+
+
+def test_compute_next_version_downshifts_in_zero_major(
+    tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _setup_with_fragment(tmp_path, ("a.md", "### Removed\n\n- breaking change\n"))
+    monkeypatch.chdir(tmp_path)
+    provider = _RecordingProvider(current="0.5.0")
+    monkeypatch.setattr(orchestrate, "get_provider", lambda name: provider)
+
+    result = orchestrate.compute_next_version(config=Config(version_provider="test"))
+
+    assert result == ("minor", "next-for-minor")
+    assert provider.next_calls == ["minor"]
+
+
+def test_compute_next_version_strict_preserves_major(
+    tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _setup_with_fragment(tmp_path, ("a.md", "### Removed\n\n- breaking change\n"))
+    monkeypatch.chdir(tmp_path)
+    provider = _RecordingProvider(current="0.5.0")
+    monkeypatch.setattr(orchestrate, "get_provider", lambda name: provider)
+
+    result = orchestrate.compute_next_version(
+        config=Config(version_provider="test", zero_major_policy="strict")
+    )
+
+    assert result == ("major", "next-for-major")
+    assert provider.next_calls == ["major"]
+
+
+def test_compute_next_version_unaffected_when_major_is_nonzero(
+    tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _setup_with_fragment(tmp_path, ("a.md", "### Removed\n\n- breaking change\n"))
+    monkeypatch.chdir(tmp_path)
+    provider = _RecordingProvider(current="1.2.3")
+    monkeypatch.setattr(orchestrate, "get_provider", lambda name: provider)
+
+    result = orchestrate.compute_next_version(config=Config(version_provider="test"))
+
+    assert result == ("major", "next-for-major")
+
+
+def test_compute_next_version_returns_none_when_no_fragments(
+    tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    (tmp_path / "pyproject.toml").write_text(_SCRIV_CONFIG_FULL, encoding="utf-8")
+    (tmp_path / "changelog.d").mkdir()
+    monkeypatch.chdir(tmp_path)
+    provider = _RecordingProvider(current="0.5.0")
+    monkeypatch.setattr(orchestrate, "get_provider", lambda name: provider)
+
+    assert (
+        orchestrate.compute_next_version(config=Config(version_provider="test")) is None
+    )
+
+
+def test_tag_release_applies_zero_major_policy(monkeypatch: pytest.MonkeyPatch) -> None:
+    provider = _RecordingProvider(current="0.5.0")
+    monkeypatch.setattr(orchestrate, "get_provider", lambda name: provider)
+
+    result = orchestrate.tag_release(
+        level="major",
+        config=Config(version_provider="test"),
+    )
+
+    assert result == "applied-minor"
+    assert provider.apply_calls == ["minor"]
+
+
+def test_tag_release_strict_passes_through(monkeypatch: pytest.MonkeyPatch) -> None:
+    provider = _RecordingProvider(current="0.5.0")
+    monkeypatch.setattr(orchestrate, "get_provider", lambda name: provider)
+
+    result = orchestrate.tag_release(
+        level="major",
+        config=Config(version_provider="test", zero_major_policy="strict"),
+    )
+
+    assert result == "applied-major"
+    assert provider.apply_calls == ["major"]
+
+
 def test_collect_for_release_raises_on_collision(
     tmp_path: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:

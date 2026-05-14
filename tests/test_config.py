@@ -26,6 +26,7 @@ version_provider = "hatch"
 preview_branch = "release-pr"
 release_detection = "pr-body-marker"
 unknown_category_policy = "error"
+zero_major_policy = "strict"
 
 [tool.scriv-release.category_semver_map]
 Added = "minor"
@@ -38,4 +39,9 @@ Custom = "major"
     assert config.preview_branch == "release-pr"
     assert config.release_detection == "pr-body-marker"
     assert config.unknown_category_policy == "error"
+    assert config.zero_major_policy == "strict"
     assert config.category_semver_map == {"Added": "minor", "Custom": "major"}
+
+
+def test_zero_major_policy_default() -> None:
+    assert Config().zero_major_policy == "downshift"

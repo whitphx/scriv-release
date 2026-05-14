@@ -12,6 +12,7 @@ else:
 
 UnknownCategoryPolicy = Literal["warn", "error", "patch"]
 ReleaseDetection = Literal["history", "pr-body-marker", "auto"]
+ZeroMajorPolicy = Literal["downshift", "strict"]
 
 
 _DEFAULT_CATEGORY_MAP: dict[str, str] = {
@@ -35,6 +36,7 @@ class Config:
     preview_branch: str = "scriv-release-preview"
     release_detection: ReleaseDetection = "history"
     pr_body_marker_key: str = "scriv-release-bump"
+    zero_major_policy: ZeroMajorPolicy = "downshift"
 
 
 def load_config(pyproject_path: Path | None = None) -> Config:
@@ -52,4 +54,5 @@ def load_config(pyproject_path: Path | None = None) -> Config:
         preview_branch=section.get("preview_branch", "scriv-release-preview"),
         release_detection=section.get("release_detection", "history"),
         pr_body_marker_key=section.get("pr_body_marker_key", "scriv-release-bump"),
+        zero_major_policy=section.get("zero_major_policy", "downshift"),
     )
