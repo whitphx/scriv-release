@@ -1546,7 +1546,7 @@ wheels = [
 
 [[package]]
 name = "scriv-release"
-version = "0.1.0"
+version = "0.3.1"
 source = { editable = "." }
 dependencies = [
     { name = "scriv" },

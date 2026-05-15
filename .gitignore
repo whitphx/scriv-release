@@ -23,3 +23,9 @@ htmlcov/
 
 # MkDocs
 site/
+
+# Cloudflare Workers
+docs-workers/**/.wrangler/
+docs-workers/**/.tmp-build/
+docs-workers/**/.venv-workers/
+docs-workers/**/python_modules/

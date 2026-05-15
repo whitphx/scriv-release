@@ -1,0 +1,12 @@
+[project]
+name = "scriv-release-install-app-callback"
+version = "0.0.0"
+description = "Cloudflare Worker that finalizes the GitHub App manifest flow for scriv-release."
+requires-python = ">=3.12"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "workers-py",
+    "workers-runtime-sdk",
+]
