@@ -22,7 +22,7 @@ To make tag-push trigger downstream workflows, mint the token from a GitHub App 
 2. On the GitHub confirmation page, click the green **Create GitHub App** button at the bottom. The App is now registered in your account.
 3. You'll be redirected to a callback page that shows the App's private key once. From there:
    - Click **Install** to grant the App access to the repo (or repos) you want `scriv-release` to manage. **This is a separate step from creation** — without it the action's token-minting step gets a 404.
-   - Copy the App ID into a repo **variable** `RELEASE_APP_ID`, and the `.pem` into a repo **secret** `RELEASE_APP_KEY`.
+   - Copy the App's Client ID into a repo **variable** `RELEASE_APP_CLIENT_ID`, and the `.pem` into a repo **secret** `RELEASE_APP_KEY`.
 
 ### Manual setup
 
@@ -34,7 +34,7 @@ If you'd rather do it by hand:
 2. **Install the App on the repo** (or the whole org). This is a separate step from creation — the App exists in your account once you click *Create GitHub App*, but it can't act on any repository until you also install it. From the App's settings page, click **Install App** in the sidebar and pick the repo (or "All repositories"). Without this step the action fails with `404 Not Found` when trying to mint a token.
 3. Generate a private key, copy it.
 4. In the repo settings:
-   - Add a repository **variable** `RELEASE_APP_ID` set to the App's numeric ID.
+   - Add a repository **variable** `RELEASE_APP_CLIENT_ID` set to the App's Client ID (find it on the App's settings page, just below the numeric App ID).
    - Add a repository **secret** `RELEASE_APP_KEY` set to the PEM-encoded private key.
 5. Reference both in your workflow:
 
@@ -50,9 +50,9 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: whitphx/scriv-release@v0.3.0
+      - uses: whitphx/scriv-release@v0.4.0
         with:
-          app-id: ${{ vars.RELEASE_APP_ID }}
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
           app-private-key: ${{ secrets.RELEASE_APP_KEY }}
 ```
 
@@ -74,7 +74,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: whitphx/scriv-release@v0.3.0
+      - uses: whitphx/scriv-release@v0.4.0
 ```
 
 ## Using a personal access token (PAT)
@@ -82,7 +82,7 @@ jobs:
 Discouraged but possible: pass a fine-grained PAT via `github-token`:
 
 ```yaml
-- uses: whitphx/scriv-release@v0.3.0
+- uses: whitphx/scriv-release@v0.4.0
   with:
     github-token: ${{ secrets.MY_PAT }}
 ```

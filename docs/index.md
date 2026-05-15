@@ -102,9 +102,9 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - uses: whitphx/scriv-release@v0.3.0
+      - uses: whitphx/scriv-release@v0.4.0
         with:
-          app-id: ${{ vars.RELEASE_APP_ID }}
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
           app-private-key: ${{ secrets.RELEASE_APP_KEY }}
 ```
 
@@ -114,7 +114,7 @@ The full walkthrough — `scriv` config, category-to-semver mapping, version-pro
 
 ## Set up the GitHub App
 
-The action references two secrets, `RELEASE_APP_ID` and `RELEASE_APP_KEY`, that come from a GitHub App you own. The App mints a short-lived installation token so the tag-push the action does at release time can trigger your downstream workflows — the default `GITHUB_TOKEN` deliberately can't, to avoid recursion.
+The action references a variable `RELEASE_APP_CLIENT_ID` and a secret `RELEASE_APP_KEY` that come from a GitHub App you own. The App mints a short-lived installation token so the tag-push the action does at release time can trigger your downstream workflows — the default `GITHUB_TOKEN` deliberately can't, to avoid recursion.
 
 `scriv-release` ships a manifest so you can register a pre-configured App in one click:
 

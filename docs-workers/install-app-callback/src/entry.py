@@ -113,6 +113,7 @@ def _error_page(title: str, detail: str, status: int) -> Response:
 def _credentials_page(app: dict[str, Any]) -> Response:
     slug = str(app.get("slug", ""))
     app_id = str(app.get("id", ""))
+    client_id = str(app.get("client_id", ""))
     app_url = str(app.get("html_url", ""))
     pem = str(app.get("pem", ""))
     install_url = f"{app_url}/installations/new"
@@ -142,10 +143,10 @@ def _credentials_page(app: dict[str, Any]) -> Response:
       <h2>2. Set the variable and secret in your repo</h2>
       <p>In the target repo: <code>Settings → Secrets and variables → Actions</code>.</p>
 
-      <h3>Repository variable: <code>RELEASE_APP_ID</code></h3>
+      <h3>Repository variable: <code>RELEASE_APP_CLIENT_ID</code></h3>
       <div class="field">
-        <input id="app-id" type="text" readonly value="{escape(app_id)}" />
-        <button type="button" data-copy="app-id">Copy</button>
+        <input id="client-id" type="text" readonly value="{escape(client_id)}" />
+        <button type="button" data-copy="client-id">Copy</button>
       </div>
 
       <h3>Repository secret: <code>RELEASE_APP_KEY</code></h3>
@@ -156,12 +157,12 @@ def _credentials_page(app: dict[str, Any]) -> Response:
       </p>
 
       <h2>3. Reference them in <code>.github/workflows/release.yml</code></h2>
-      <pre><code>      - uses: whitphx/scriv-release@v0.3.0
+      <pre><code>      - uses: whitphx/scriv-release@v0.4.0
         with:
-          app-id: ${{{{ vars.RELEASE_APP_ID }}}}
+          client-id: ${{{{ vars.RELEASE_APP_CLIENT_ID }}}}
           app-private-key: ${{{{ secrets.RELEASE_APP_KEY }}}}</code></pre>
 
-      <p class="muted">App ID <code>{escape(app_id)}</code> · slug <code>{escape(slug)}</code></p>
+      <p class="muted">App ID <code>{escape(app_id)}</code> · Client ID <code>{escape(client_id)}</code> · slug <code>{escape(slug)}</code></p>
     </main>
 
     <script>

@@ -41,13 +41,13 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - uses: whitphx/scriv-release@v0.3.0
+      - uses: whitphx/scriv-release@v0.4.0
         with:
-          app-id: ${{ vars.RELEASE_APP_ID }}
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
           app-private-key: ${{ secrets.RELEASE_APP_KEY }}
 ```
 
-`RELEASE_APP_ID` and `RELEASE_APP_KEY` come from a GitHub App that you own. The action mints a short-lived installation token from the App so the tag-push it does at release time can trigger downstream workflows (the default `GITHUB_TOKEN` cannot — by design, to avoid recursion). To skip the manual App-creation flow, open
+`RELEASE_APP_CLIENT_ID` and `RELEASE_APP_KEY` come from a GitHub App that you own. The action mints a short-lived installation token from the App so the tag-push it does at release time can trigger downstream workflows (the default `GITHUB_TOKEN` cannot — by design, to avoid recursion). To skip the manual App-creation flow, open
 
 > **<https://whitphx.github.io/scriv-release/install-app/>**
 

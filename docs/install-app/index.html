@@ -74,8 +74,8 @@
         <code>github.com</code> with the App's permissions pre-filled.
         <strong>Click the green "Create GitHub App" button at the bottom</strong>
         to actually create it &mdash; the install page only prepares the form.
-        You'll then be redirected to a callback page that shows the App ID
-        and private key once.
+        You'll then be redirected to a callback page that shows the App's
+        Client ID and private key once.
       </p>
       <p>
         You can change the suggested name (<code>scriv-release-bot</code>) on
@@ -130,7 +130,7 @@
     <script>
       // The manifest's `redirect_url` points at a Cloudflare Worker that finalizes
       // the App via the /app-manifests/{code}/conversions endpoint and shows the
-      // resulting App ID + private key. Source: docs-workers/install-app-callback/.
+      // resulting Client ID + private key. Source: docs-workers/install-app-callback/.
       const CALLBACK_URL =
         "https://scriv-release-install-app-callback.whitphx.workers.dev/callback";
 
