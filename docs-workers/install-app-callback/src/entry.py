@@ -137,7 +137,7 @@ def _credentials_page(app: dict[str, Any]) -> Response:
       <p>
         <a class="btn" href="{escape(install_url)}" target="_blank" rel="noopener">Install <code>{escape(slug)}</code></a>
       </p>
-      <p>Pick the repository (or repositories) you want <code>scriv-release</code> to manage.</p>
+      <p><strong>This is a separate step from creation.</strong> The App exists in your account now, but it can't act on any repository until you install it. Pick the repository (or repositories) you want <code>scriv-release</code> to manage — without this step the action fails with <code>404 Not Found</code> when minting a token.</p>
 
       <h2>2. Set the variable and secret in your repo</h2>
       <p>In the target repo: <code>Settings → Secrets and variables → Actions</code>.</p>

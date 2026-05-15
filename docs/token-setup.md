@@ -13,18 +13,25 @@ When the workflow pushes a tag using the default `GITHUB_TOKEN`, GitHub does **n
 
 To make tag-push trigger downstream workflows, mint the token from a GitHub App that you own. `scriv-release` provides a manifest so you can register the App in one click:
 
+> [!IMPORTANT]
+> Creating a GitHub App registers it in your account, but the App can't act on *any* repository until you also **install** it on that repo. These are two separate steps in GitHub's UI. Skipping the install step makes the action fail at runtime with `404 Not Found` when minting a token (`GET /repos/<owner>/<repo>/installation`).
+
 ### Quick install (recommended)
 
-Open **<https://whitphx.github.io/scriv-release/install-app/>** and click *Create on your personal account* (or fill the org-name field for an org install). GitHub's confirmation page is pre-populated with the recommended permissions; submit, and the App is registered under your account. The page then redirects you back with step-by-step instructions for generating a key, installing the App on your repo, and setting the secrets.
+1. Open <https://whitphx.github.io/scriv-release/install-app/> and click **Create on your personal account** (or fill the org-name field for an org install).
+2. On the GitHub confirmation page, click the green **Create GitHub App** button at the bottom. The App is now registered in your account.
+3. You'll be redirected to a callback page that shows the App's private key once. From there:
+   - Click **Install** to grant the App access to the repo (or repos) you want `scriv-release` to manage. **This is a separate step from creation** — without it the action's token-minting step gets a 404.
+   - Copy the App ID into a repo **variable** `RELEASE_APP_ID`, and the `.pem` into a repo **secret** `RELEASE_APP_KEY`.
 
 ### Manual setup
 
-If you'd rather do it by hand, the same recipe:
+If you'd rather do it by hand:
 
 1. Create a GitHub App in your org or user account at <https://github.com/settings/apps/new>.
    - Repository permissions: `Contents: Read and write`, `Pull requests: Read and write`.
    - Subscribe to events: none required.
-2. Install the App on the repo (or the whole org).
+2. **Install the App on the repo** (or the whole org). This is a separate step from creation — the App exists in your account once you click *Create GitHub App*, but it can't act on any repository until you also install it. From the App's settings page, click **Install App** in the sidebar and pick the repo (or "All repositories"). Without this step the action fails with `404 Not Found` when trying to mint a token.
 3. Generate a private key, copy it.
 4. In the repo settings:
    - Add a repository **variable** `RELEASE_APP_ID` set to the App's numeric ID.
