@@ -59,124 +59,81 @@
   </head>
   <body>
     <main>
-      <section id="form-state">
-        <h1>Install the <code>scriv-release</code> App</h1>
-        <p>
-          This page registers a private GitHub App in your account or
-          organization with the permissions required by the
-          <a href="https://github.com/whitphx/scriv-release"
-            ><code>scriv-release</code> action</a
-          >: <code>contents: write</code> and
-          <code>pull_requests: write</code>. The App is owned by you;
-          <code>scriv-release</code> never sees its private key.
-        </p>
-        <p>
-          You can change the suggested name (<code>scriv-release-bot</code>) on
-          the next page if it's already taken &mdash; GitHub App names are
-          globally unique.
-        </p>
+      <h1>Install the <code>scriv-release</code> App</h1>
+      <p>
+        This page registers a private GitHub App in your account or
+        organization with the permissions required by the
+        <a href="https://github.com/whitphx/scriv-release"
+          ><code>scriv-release</code> action</a
+        >: <code>contents: write</code> and
+        <code>pull_requests: write</code>. The App is owned by you;
+        <code>scriv-release</code> never sees its private key.
+      </p>
+      <p>
+        After you click below, GitHub shows a confirmation page on
+        <code>github.com</code> with the App's permissions pre-filled.
+        <strong>Click the green "Create GitHub App" button at the bottom</strong>
+        to actually create it &mdash; the install page only prepares the form.
+        You'll then be redirected to a callback page that shows the App ID
+        and private key once.
+      </p>
+      <p>
+        You can change the suggested name (<code>scriv-release-bot</code>) on
+        the GitHub confirmation page if it's already taken &mdash; GitHub App
+        names are globally unique.
+      </p>
 
-        <form action="https://github.com/settings/apps/new" method="post">
-          <input type="hidden" name="manifest" id="manifest-personal" />
-          <button type="submit">Create on your personal account</button>
-        </form>
+      <form action="https://github.com/settings/apps/new" method="post">
+        <input type="hidden" name="manifest" id="manifest-personal" />
+        <button type="submit">Create on your personal account</button>
+      </form>
 
-        <form id="org-form" method="post">
-          <label
-            >Organization name:
-            <input
-              type="text"
-              name="org"
-              required
-              autocapitalize="off"
-              autocomplete="off"
-              spellcheck="false"
-              placeholder="my-org"
-            />
-          </label>
-          <input type="hidden" name="manifest" id="manifest-org" />
-          <button type="submit">Create on an organization</button>
-        </form>
+      <form id="org-form" method="post">
+        <label
+          >Organization name:
+          <input
+            type="text"
+            name="org"
+            required
+            autocapitalize="off"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="my-org"
+          />
+        </label>
+        <input type="hidden" name="manifest" id="manifest-org" />
+        <button type="submit">Create on an organization</button>
+      </form>
 
-        <details>
-          <summary>Manual setup (or to inspect the manifest)</summary>
-          <p>
-            If you'd rather create the App by hand, navigate to
-            <a href="https://github.com/settings/apps/new"
-              >https://github.com/settings/apps/new</a
-            >
-            (or your org's equivalent) and fill in:
-          </p>
-          <ul>
-            <li>Repository permissions: <code>Contents: Read and write</code></li>
-            <li>
-              Repository permissions:
-              <code>Pull requests: Read and write</code>
-            </li>
-            <li>Subscribe to events: none</li>
-          </ul>
-          <p>The manifest used by the buttons above:</p>
-          <pre id="manifest-display"></pre>
-        </details>
-      </section>
-
-      <section id="done-state" hidden>
-        <h1>App created &mdash; next steps</h1>
+      <details>
+        <summary>Manual setup (or to inspect the manifest)</summary>
         <p>
-          GitHub returned you here after creating the App. The App now exists in
-          your account or organization, but it isn't wired to your repo yet.
-        </p>
-        <ol>
-          <li>
-            Open the App's settings page from
-            <a href="https://github.com/settings/apps">your apps</a> (personal)
-            or <code>Settings &rarr; Developer settings &rarr; GitHub Apps</code>
-            (organization). Note its <strong>App ID</strong> &mdash; you'll
-            need it.
-          </li>
-          <li>
-            Scroll to <em>Private keys</em> and click
-            <strong>Generate a private key</strong>. A <code>.pem</code> file
-            downloads &mdash; keep it; you'll paste its contents into a repo
-            secret.
-          </li>
-          <li>
-            Click <strong>Install App</strong> in the sidebar and install it on
-            the repo (or repos) you want <code>scriv-release</code> to manage.
-          </li>
-          <li>
-            In the repo: <code>Settings &rarr; Secrets and variables &rarr; Actions</code>:
-            <ul>
-              <li>
-                Add a <em>variable</em> (e.g. <code>RELEASE_APP_ID</code>) set
-                to the App ID from step 1.
-              </li>
-              <li>
-                Add a <em>secret</em> (e.g. <code>RELEASE_APP_KEY</code>) set
-                to the full contents of the <code>.pem</code> file.
-              </li>
-            </ul>
-          </li>
-          <li>
-            Reference them in your release workflow:
-            <pre>      - uses: whitphx/scriv-release@v0.3.0
-        with:
-          app-id: ${{ vars.RELEASE_APP_ID }}
-          app-private-key: ${{ secrets.RELEASE_APP_KEY }}</pre>
-          </li>
-        </ol>
-        <p>
-          See
-          <a href="https://github.com/whitphx/scriv-release/blob/main/docs/token-setup.md"
-            >docs/token-setup.md</a
+          If you'd rather create the App by hand, navigate to
+          <a href="https://github.com/settings/apps/new"
+            >https://github.com/settings/apps/new</a
           >
-          for context on why a GitHub App is recommended over the default
-          <code>GITHUB_TOKEN</code>.
+          (or your org's equivalent) and fill in:
         </p>
-      </section>
+        <ul>
+          <li>Repository permissions: <code>Contents: Read and write</code></li>
+          <li>
+            Repository permissions:
+            <code>Pull requests: Read and write</code>
+          </li>
+          <li>Subscribe to events: none</li>
+        </ul>
+        <p>The manifest used by the buttons above:</p>
+        <pre id="manifest-display"></pre>
+      </details>
     </main>
 
     <script>
+      // The manifest's `redirect_url` points at a Cloudflare Worker that finalizes
+      // the App via the /app-manifests/{code}/conversions endpoint and shows the
+      // resulting App ID + private key. Source: workers/install-app-callback/.
+      const CALLBACK_URL =
+        "https://scriv-release-install-app-callback.whitphx.workers.dev/callback";
+
       const manifest = {
         name: "scriv-release-bot",
         url: "https://github.com/whitphx/scriv-release",
@@ -188,7 +145,7 @@
           pull_requests: "write",
         },
         default_events: [],
-        redirect_url: "https://whitphx.github.io/scriv-release/install-app/",
+        redirect_url: CALLBACK_URL,
       };
 
       const json = JSON.stringify(manifest);
@@ -208,11 +165,6 @@
         }
         e.target.action = `https://github.com/organizations/${encodeURIComponent(org)}/settings/apps/new`;
       });
-
-      if (new URLSearchParams(location.search).has("code")) {
-        document.getElementById("form-state").hidden = true;
-        document.getElementById("done-state").hidden = false;
-      }
     </script>
   </body>
 </html>
