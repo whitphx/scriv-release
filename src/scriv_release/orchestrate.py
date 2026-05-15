@@ -8,7 +8,7 @@ from packaging.version import InvalidVersion, Version
 
 from .config import Config, load_config
 from .policy import BumpLevel, apply_zero_major_policy, compute_bump_level
-from .versioning import get_provider
+from .versioning import _git, get_provider
 
 
 def compute_next_version(*, config: Config) -> tuple[BumpLevel, str] | None:
@@ -30,7 +30,7 @@ def collect_for_release(*, config: Config) -> str | None:
     result = compute_next_version(config=config)
     if result is None:
         return None
-    _, next_version = result
+    level, next_version = result
     existing = detect_version_collision(next_version)
     if existing is not None:
         raise SystemExit(_collision_message(next_version, existing))
@@ -38,6 +38,12 @@ def collect_for_release(*, config: Config) -> str | None:
         ["scriv", "collect", "--version", next_version],
         check=True,
     )
+    # Bump the version-file(s) (pyproject.toml etc.) in the working tree as part
+    # of the same preview commit. This keeps the released state in a single
+    # commit — the preview-PR merge commit — so the tag in tag_release just
+    # points at HEAD without needing a separate "Release vX.Y.Z" commit.
+    provider = get_provider(config.version_provider)
+    provider.apply(level, tag=False, commit=False, push=False)
     return next_version
 
 
@@ -171,13 +177,17 @@ def print_changelog(*, version: str) -> str:
 
 
 def tag_release(*, level: BumpLevel, config: Config, push: bool = False) -> str:
+    # By the time we tag, the preview-PR flow has already bumped the version
+    # file(s) and merged that commit to main, so `provider.current()` reflects
+    # the pending release. We just tag HEAD with that version — no second bump,
+    # no extra commit. `level` is kept in the signature so the action's
+    # "is this a release commit?" gate (which passes the detected level
+    # through) stays unchanged.
+    del level
     provider = get_provider(config.version_provider)
-    effective = apply_zero_major_policy(
-        level,
-        current_version=provider.current(),
-        policy=config.zero_major_policy,
-    )
-    return provider.apply(effective, tag=True, commit=False, push=push)
+    version = provider.current()
+    _git.finalize(version, tag=True, commit=False, push=push)
+    return version
 
 
 def parse_marker(body: str, *, key: str) -> BumpLevel | None:

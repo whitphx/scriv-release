@@ -126,9 +126,9 @@ Configured via `[tool.scriv-release].version_provider`. Built-ins:
 
 | Name              | Notes                                                                                 |
 | ----------------- | ------------------------------------------------------------------------------------- |
-| `bump-my-version` | Default. Requires the `[bump-my-version]` extra. Tagging/commit handled by bump-my-version's own config. |
-| `hatch`           | Uses `hatch version`. Requires `[tool.hatch.version]` to be configured (dynamic source). Tag is `v{version}`. |
-| `uv`              | Uses `uv version`. Tag is `v{version}`.                                                |
+| `bump-my-version` | Default. Requires the `[bump-my-version]` extra. Uses `bump-my-version bump` to update version-bearing files declared in `[tool.bumpversion]` (if any). Tag is `v{version}`. |
+| `hatch`           | Uses `hatch version` to update the version. Requires `[tool.hatch.version]` to be configured (non-`vcs` source). Tag is `v{version}`. |
+| `uv`              | Uses `uv version --bump` to update `[project].version`. Tag is `v{version}`.           |
 | `shell`           | Runs user-supplied commands. See below.                                                |
 
 Third parties can register additional providers via the `scriv_release.version_providers` entry-point group.
@@ -147,7 +147,7 @@ apply = "./scripts/bump.sh"   # receives $LEVEL and $NEW_VERSION; writes the new
 # next = "..."                # optional; defaults to packaging-based major/minor/patch bump of `current`
 ```
 
-The `apply` command must update version-bearing files; `scriv-release` then handles `git tag`/`git push`.
+The `apply` command must update version-bearing files in the working tree. `scriv-release` runs it as part of the **preview PR** so the bump is captured in the same commit as the changelog edit, then tags HEAD at release time.
 
 ## Release detection
 
