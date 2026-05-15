@@ -329,6 +329,101 @@ def test_tag_release_strict_passes_through(monkeypatch: pytest.MonkeyPatch) -> N
     assert provider.apply_calls == ["major"]
 
 
+def _setup_with_changelog_and_fragment(
+    tmp_path: Any, changelog_text: str, fragment: tuple[str, str]
+) -> None:
+    (tmp_path / "pyproject.toml").write_text(_SCRIV_CONFIG_FULL, encoding="utf-8")
+    (tmp_path / "CHANGELOG.md").write_text(changelog_text, encoding="utf-8")
+    frag_dir = tmp_path / "changelog.d"
+    frag_dir.mkdir()
+    name, body = fragment
+    (frag_dir / name).write_text(body, encoding="utf-8")
+
+
+def test_latest_changelog_version_returns_highest(
+    tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _setup_scriv_repo(tmp_path, _CHANGELOG_WITH_065)
+    monkeypatch.chdir(tmp_path)
+    assert orchestrate.latest_changelog_version() == "0.65.1"
+
+
+def test_latest_changelog_version_returns_none_when_no_entries(
+    tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _setup_scriv_repo(tmp_path, "# Changelog\n\n<!-- scriv-insert-here -->\n")
+    monkeypatch.chdir(tmp_path)
+    assert orchestrate.latest_changelog_version() is None
+
+
+def test_check_provider_in_sync_passes_on_match(
+    tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _setup_scriv_repo(tmp_path, _CHANGELOG_WITH_065)
+    monkeypatch.chdir(tmp_path)
+    # Should not raise — "v"-prefix is treated as equal to the changelog "0.65.1".
+    orchestrate.check_provider_in_sync_with_changelog(current_version="v0.65.1")
+
+
+def test_check_provider_in_sync_skips_when_no_changelog_entries(
+    tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Models the "first introduction" case: scriv-release is being added to a
+    # repo that has no changelog history yet, so there's nothing to compare
+    # the provider against.
+    _setup_scriv_repo(tmp_path, "# Changelog\n\n<!-- scriv-insert-here -->\n")
+    monkeypatch.chdir(tmp_path)
+    orchestrate.check_provider_in_sync_with_changelog(current_version="0.1.0")
+
+
+def test_check_provider_in_sync_raises_on_drift(
+    tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _setup_scriv_repo(tmp_path, _CHANGELOG_WITH_065)
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(SystemExit) as exc:
+        orchestrate.check_provider_in_sync_with_changelog(current_version="0.67.0")
+    msg = str(exc.value)
+    assert "0.67.0" in msg
+    assert "0.65.1" in msg
+    assert "git tag -d v0.67.0" in msg
+
+
+def test_compute_next_version_raises_on_provider_drift(
+    tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _setup_with_changelog_and_fragment(
+        tmp_path,
+        _CHANGELOG_WITH_065,
+        ("a.md", "### Fixed\n\n- a fix\n"),
+    )
+    monkeypatch.chdir(tmp_path)
+    provider = _RecordingProvider(current="0.67.0")
+    monkeypatch.setattr(orchestrate, "get_provider", lambda name: provider)
+
+    with pytest.raises(SystemExit) as exc:
+        orchestrate.compute_next_version(config=Config(version_provider="test"))
+    assert "0.67.0" in str(exc.value)
+    assert "0.65.1" in str(exc.value)
+    assert provider.next_calls == []  # we bail before computing next
+
+
+def test_compute_next_version_passes_when_provider_matches_changelog(
+    tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _setup_with_changelog_and_fragment(
+        tmp_path,
+        _CHANGELOG_WITH_065,
+        ("a.md", "### Fixed\n\n- a fix\n"),
+    )
+    monkeypatch.chdir(tmp_path)
+    provider = _RecordingProvider(current="0.65.1")
+    monkeypatch.setattr(orchestrate, "get_provider", lambda name: provider)
+
+    result = orchestrate.compute_next_version(config=Config(version_provider="test"))
+    assert result == ("patch", "next-for-patch")
+
+
 def test_collect_for_release_raises_on_collision(
     tmp_path: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:

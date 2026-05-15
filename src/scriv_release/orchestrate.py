@@ -4,6 +4,8 @@ import os
 import re
 import subprocess
 
+from packaging.version import InvalidVersion, Version
+
 from .config import Config, load_config
 from .policy import BumpLevel, apply_zero_major_policy, compute_bump_level
 from .versioning import get_provider
@@ -14,9 +16,11 @@ def compute_next_version(*, config: Config) -> tuple[BumpLevel, str] | None:
     if level is None:
         return None
     provider = get_provider(config.version_provider)
+    current = provider.current()
+    check_provider_in_sync_with_changelog(current_version=current)
     effective = apply_zero_major_policy(
         level,
-        current_version=provider.current(),
+        current_version=current,
         policy=config.zero_major_policy,
     )
     return effective, provider.next(effective)
@@ -46,9 +50,9 @@ def detect_version_collision(version: str) -> str | None:
     detect itself.
     """
     from scriv.scriv import Scriv
-    from scriv.util import Version
+    from scriv.util import Version as ScrivVersion
 
-    target = Version(version)
+    target = ScrivVersion(version)
     if not target:
         return None
     scriv = Scriv()
@@ -57,10 +61,82 @@ def detect_version_collision(version: str) -> str | None:
     for etitle in changelog.entries().keys():
         if etitle is None:
             continue
-        eversion = Version.from_text(etitle)
+        eversion = ScrivVersion.from_text(etitle)
         if eversion is not None and eversion == target:
             return etitle
     return None
+
+
+def latest_changelog_version() -> str | None:
+    """Return the highest parseable version in CHANGELOG.md, or None if there are no entries.
+
+    Returns None for a changelog with no entries (e.g. when scriv-release is being
+    introduced to a repo for the first time) — callers should treat that as
+    "no released version to compare against".
+    """
+    from scriv.scriv import Scriv
+    from scriv.util import Version as ScrivVersion
+
+    scriv = Scriv()
+    changelog = scriv.changelog()
+    changelog.read()
+    versions: list[Version] = []
+    for etitle in changelog.entries().keys():
+        if etitle is None:
+            continue
+        eversion = ScrivVersion.from_text(etitle)
+        if eversion is None:
+            continue
+        try:
+            versions.append(Version(str(eversion)))
+        except InvalidVersion:
+            continue
+    if not versions:
+        return None
+    return str(max(versions))
+
+
+def check_provider_in_sync_with_changelog(*, current_version: str) -> None:
+    """Raise SystemExit if the version provider's current disagrees with CHANGELOG.md.
+
+    No-op when CHANGELOG.md has no version entries yet — that's the expected state
+    when scriv-release is first introduced to a repo, and there's nothing to
+    compare against.
+    """
+    latest = latest_changelog_version()
+    if latest is None:
+        return
+    try:
+        if Version(current_version) == Version(latest):
+            return
+    except InvalidVersion:
+        # An unparseable provider version is its own problem; let downstream
+        # callers surface the failure rather than masking it here.
+        return
+    raise SystemExit(_drift_message(current=current_version, latest=latest))
+
+
+def _drift_message(*, current: str, latest: str) -> str:
+    return (
+        f"\nThe version provider reports the current version as {current!r}, "
+        f"but the most recent CHANGELOG.md entry is {latest!r}.\n"
+        f"\n"
+        f"This usually means a stale or orphan tag is present — for example,\n"
+        f"a leftover from a partially-completed previous release attempt — so\n"
+        f"the provider reads a version that was never actually released.\n"
+        f"Continuing would compute the next version against the stray tag and\n"
+        f"produce a release number that doesn't follow the changelog history.\n"
+        f"\n"
+        f"To recover, either:\n"
+        f"  - Delete the stray tag so the provider returns to the released\n"
+        f"    version, e.g.:\n"
+        f"        git tag -d v{current}\n"
+        f"        git push origin :refs/tags/v{current}\n"
+        f"  - Or add the missing CHANGELOG.md entry for {current} if that\n"
+        f"    version really was released and the changelog is what's out of date.\n"
+        f"\n"
+        f"After reconciling, re-run scriv-release.\n"
+    )
 
 
 def _collision_message(version: str, existing: str) -> str:
