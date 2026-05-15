@@ -25,7 +25,7 @@ htmlcov/
 site/
 
 # Cloudflare Workers
-workers/**/.wrangler/
-workers/**/.tmp-build/
-workers/**/.venv-workers/
-workers/**/python_modules/
+docs-workers/**/.wrangler/
+docs-workers/**/.tmp-build/
+docs-workers/**/.venv-workers/
+docs-workers/**/python_modules/
