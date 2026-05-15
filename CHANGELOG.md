@@ -2,6 +2,13 @@
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-0.5.1'></a>
+## 0.5.1 — 2026-05-15
+
+### Fixed
+
+- Pass `--allow-dirty` to `bump-my-version bump` in the `bump-my-version` provider's `apply()` so it tolerates the working-tree state left by `scriv collect` (modified `CHANGELOG.md`, consumed fragment file deleted). Without the flag, `bump-my-version` aborted with `Git working directory is not clean` and the action's "open preview PR" step crashed on every repo using the default provider — a regression introduced in v0.5.0 by moving the version-file bump into the preview-PR step.
+
 <a id='changelog-0.5.0'></a>
 ## 0.5.0 — 2026-05-15
 
