@@ -32,7 +32,7 @@ Changesets sidesteps the merge-conflict and commit-message-scraping problems by 
 
 Then a separate **release loop** consumes the accumulated fragments:
 
-1. When fragments are present on `main`, a bot opens (or updates) a single **"Changelog Preview" PR**. This PR collapses every accumulated fragment into a real `CHANGELOG.md` edit, picks the next version from the highest-precedence category in the bunch (a `Removed` makes it major, a `Fixed` is patch, etc.), bumps the version, and removes the now-consumed fragment files.
+1. When fragments are present on `main`, a bot opens (or updates) a single **"Changelog Preview" PR**. This PR collapses every accumulated fragment into a real `CHANGELOG.md` edit, picks the next version from the highest-precedence category in the bunch (a `Removed` makes it major, a `Fixed` is patch, etc.), bumps the version, and removes the now-consumed fragment files. While the current major is `0`, "major" is downshifted to a minor bump by default so breaking changes stay inside `0.x` per [SemVer §4](https://semver.org/#spec-item-4) — see [`zero_major_policy`](quickstart.md#zero_major_policy) for the escape hatch.
 2. When you're ready to release, you merge that PR. The bot sees that `main` no longer has fragments (but `main~1` did) and concludes the merge *was* the release. It pushes a tag at the merged commit.
 
 That second step — using **file presence** to detect "this is a release" — is the part that quietly does the most work. It survives squash, rebase, octopus merge, and merge-commit cleanup, because the question being asked isn't "what does the commit message say?" but "did fragments exist before this commit and do they not exist now?"
