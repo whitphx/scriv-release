@@ -1,5 +1,10 @@
 # scriv-release
 
+[![PyPI](https://img.shields.io/pypi/v/scriv-release.svg)](https://pypi.org/project/scriv-release/)
+[![Python versions](https://img.shields.io/pypi/pyversions/scriv-release.svg)](https://pypi.org/project/scriv-release/)
+[![CI](https://github.com/whitphx/scriv-release/actions/workflows/ci.yml/badge.svg)](https://github.com/whitphx/scriv-release/actions/workflows/ci.yml)
+[![License](https://img.shields.io/pypi/l/scriv-release.svg)](https://github.com/whitphx/scriv-release/blob/main/LICENSE)
+
 Changesets-style release automation on top of [`scriv`](https://github.com/nedbat/scriv).
 
 `scriv` already manages per-PR changelog fragments. `scriv-release` adds the missing pieces for fully automated releases:
