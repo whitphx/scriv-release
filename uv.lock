@@ -1549,6 +1549,7 @@ name = "scriv-release"
 version = "0.3.1"
 source = { editable = "." }
 dependencies = [
+    { name = "packaging" },
     { name = "scriv" },
     { name = "tomli", marker = "python_full_version < '3.11'" },
 ]
@@ -1579,6 +1580,7 @@ docs = [
 requires-dist = [
     { name = "bump-my-version", marker = "extra == 'bump-my-version'", specifier = ">=0.28" },
     { name = "hatch", marker = "extra == 'hatch'", specifier = ">=1.12" },
+    { name = "packaging", specifier = ">=21" },
     { name = "scriv", specifier = ">=1.7" },
     { name = "scriv-release", extras = ["bump-my-version", "hatch"], marker = "extra == 'all'" },
     { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2.0" },

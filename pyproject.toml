@@ -16,6 +16,7 @@ classifiers = [
     "Topic :: Software Development :: Build Tools",
 ]
 dependencies = [
+    "packaging>=21",
     "scriv>=1.7",
     "tomli>=2.0; python_version<'3.11'",
 ]
