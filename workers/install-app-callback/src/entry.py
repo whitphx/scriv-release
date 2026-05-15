@@ -16,7 +16,7 @@ import json
 from html import escape
 from http import HTTPStatus
 from typing import Any
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import parse_qs, urlparse
 
 from workers import Response, WorkerEntrypoint, fetch
 
