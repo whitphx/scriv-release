@@ -2,6 +2,13 @@
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-0.4.1'></a>
+## 0.4.1 — 2026-05-15
+
+### Fixed
+
+- Abort with a clear error before opening a Changelog Preview PR when the version provider's reported current version disagrees with the most recent CHANGELOG.md entry. Previously a stale or orphan tag (e.g. a leftover from a partially-completed previous release attempt) would silently cause the next-version computation to roll forward from a version that was never actually released. The check is skipped when CHANGELOG.md has no entries yet, so first-time introduction of scriv-release to a new repo still works.
+
 <a id='changelog-0.4.0'></a>
 ## 0.4.0 — 2026-05-15
 
