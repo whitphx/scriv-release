@@ -24,7 +24,11 @@ class Provider:
         commit: bool = False,
         push: bool = False,
     ) -> str:
-        args = ["bump-my-version", "bump", level, "--verbose"]
+        # --allow-dirty: collect_for_release runs `scriv collect` first, which
+        # leaves CHANGELOG.md modified and a fragment deleted. Without this
+        # flag bump-my-version refuses with "Git working directory is not
+        # clean" before it gets a chance to bump anything.
+        args = ["bump-my-version", "bump", level, "--verbose", "--allow-dirty"]
         if tag:
             args.append("--tag")
         if not commit:
