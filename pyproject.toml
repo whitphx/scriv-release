@@ -1,6 +1,6 @@
 [project]
 name = "scriv-release"
-version = "0.1.0"
+version = "0.3.1"
 description = "Changesets-style release automation on top of scriv"
 readme = "README.md"
 license = "MIT"
@@ -51,6 +51,14 @@ docs = [
 [build-system]
 requires = ["uv_build>=0.11.6,<0.12.0"]
 build-backend = "uv_build"
+
+[tool.scriv]
+categories = ["Added", "Changed", "Deprecated", "Removed", "Fixed", "Security", "Chore"]
+format = "md"
+md_header_level = 2
+
+[tool.scriv-release]
+version_provider = "uv"
 
 [tool.ruff.lint]
 extend-select = ["I"]
