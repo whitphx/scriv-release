@@ -1,6 +1,6 @@
 [project]
 name = "scriv-release"
-version = "0.6.0"
+dynamic = ["version"]
 description = "Changesets-style release automation on top of scriv"
 readme = "README.md"
 license = "MIT"
@@ -50,8 +50,14 @@ docs = [
 ]
 
 [build-system]
-requires = ["uv_build>=0.11.6,<0.12.0"]
-build-backend = "uv_build"
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/scriv_release"]
 
 [tool.scriv]
 categories = ["Added", "Changed", "Deprecated", "Removed", "Fixed", "Security", "Chore"]
@@ -59,7 +65,9 @@ format = "md"
 md_header_level = 2
 
 [tool.scriv-release]
-version_provider = "uv"
+# Default provider is bump-my-version; with `dynamic = ["version"]` it reads
+# the current version from the latest git tag, keeping the project's notion
+# of "current" in step with the tag scriv-release itself just pushed.
 
 [tool.ruff.lint]
 extend-select = ["I"]

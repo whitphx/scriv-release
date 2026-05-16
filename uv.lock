@@ -1546,7 +1546,6 @@ wheels = [
 
 [[package]]
 name = "scriv-release"
-version = "0.6.0"
 source = { editable = "." }
 dependencies = [
     { name = "packaging" },
@@ -1578,14 +1577,15 @@ docs = [
 
 [package.metadata]
 requires-dist = [
+    { name = "bump-my-version", marker = "extra == 'all'", specifier = ">=0.28" },
     { name = "bump-my-version", marker = "extra == 'bump-my-version'", specifier = ">=0.28" },
+    { name = "hatch", marker = "extra == 'all'", specifier = ">=1.12" },
     { name = "hatch", marker = "extra == 'hatch'", specifier = ">=1.12" },
     { name = "packaging", specifier = ">=21" },
     { name = "scriv", specifier = ">=1.7" },
-    { name = "scriv-release", extras = ["bump-my-version", "hatch"], marker = "extra == 'all'" },
     { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2.0" },
 ]
-provides-extras = ["bump-my-version", "hatch", "all"]
+provides-extras = ["all", "bump-my-version", "hatch"]
 
 [package.metadata.requires-dev]
 dev = [
