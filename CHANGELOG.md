@@ -2,6 +2,13 @@
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-0.6.2'></a>
+## 0.6.2 — 2026-05-16
+
+### Chore
+
+- Switch scriv-release's own packaging to `hatch-vcs`-driven dynamic versioning. `pyproject.toml` now declares `dynamic = ["version"]` and uses `hatchling` + `hatch-vcs` as the build backend, so the version comes from the git tag at build time rather than from a static `[project].version` field. The `[tool.scriv-release]` config drops the explicit `version_provider = "uv"` and falls back to the default `bump-my-version` (which, with no static version field present, reads the current version from the latest git tag). The `publish.yml` "Stamp version from tag" step is no longer needed and has been removed. Net effect: scriv-release's own release loop no longer requires a manual `pyproject.toml` bump per release — the tag itself is the version, end-to-end. No change to how the action treats user projects.
+
 <a id='changelog-0.6.1'></a>
 ## 0.6.1 — 2026-05-16
 
