@@ -22,11 +22,9 @@ jobs:
       - name: Run tests
         run: uv run pytest
 
-      - name: Stamp version from tag
-        env:
-          REF_NAME: ${{ github.ref_name }}
-        run: uv version "${REF_NAME#v}" --frozen
-
+      # Version comes from the git tag at build time via hatch-vcs (see
+      # [tool.hatch.version] source = "vcs" in pyproject.toml); no stamp
+      # step required.
       - name: Build distributions
         run: uv build
 
