@@ -15,9 +15,9 @@ def compute_next_version(*, config: Config) -> tuple[BumpLevel, str] | None:
     level = compute_bump_level(config=config)
     if level is None:
         return None
+    check_no_orphan_tag()
     provider = get_provider(config.version_provider)
     current = provider.current()
-    check_provider_in_sync_with_changelog(current_version=current)
     effective = apply_zero_major_policy(
         level,
         current_version=current,
@@ -30,7 +30,7 @@ def collect_for_release(*, config: Config) -> str | None:
     result = compute_next_version(config=config)
     if result is None:
         return None
-    level, next_version = result
+    _, next_version = result
     existing = detect_version_collision(next_version)
     if existing is not None:
         raise SystemExit(_collision_message(next_version, existing))
@@ -38,12 +38,6 @@ def collect_for_release(*, config: Config) -> str | None:
         ["scriv", "collect", "--version", next_version],
         check=True,
     )
-    # Bump the version-file(s) (pyproject.toml etc.) in the working tree as part
-    # of the same preview commit. This keeps the released state in a single
-    # commit — the preview-PR merge commit — so the tag in tag_release just
-    # points at HEAD without needing a separate "Release vX.Y.Z" commit.
-    provider = get_provider(config.version_provider)
-    provider.apply(level, tag=False, commit=False, push=False)
     return next_version
 
 
@@ -102,43 +96,75 @@ def latest_changelog_version() -> str | None:
     return str(max(versions))
 
 
-def check_provider_in_sync_with_changelog(*, current_version: str) -> None:
-    """Raise SystemExit if the version provider's current disagrees with CHANGELOG.md.
+def latest_git_tag_version() -> str | None:
+    """Return the highest parseable v* git tag, or None if there are none.
 
-    No-op when CHANGELOG.md has no version entries yet — that's the expected state
-    when scriv-release is first introduced to a repo, and there's nothing to
-    compare against.
+    Used as the source of truth for "what version is currently released",
+    independent of any in-tree version-bearing file. The latter can legitimately
+    drift from the tagged version for projects whose committed `pyproject.toml`
+    `[project].version` is a stale placeholder (e.g. `hatch-vcs`-style dynamic
+    versioning, or "stamp at publish" flows). The git tag, by contrast, is the
+    authoritative record of what was actually released.
     """
-    latest = latest_changelog_version()
-    if latest is None:
-        return
-    try:
-        if Version(current_version) == Version(latest):
-            return
-    except InvalidVersion:
-        # An unparseable provider version is its own problem; let downstream
-        # callers surface the failure rather than masking it here.
-        return
-    raise SystemExit(_drift_message(current=current_version, latest=latest))
+    result = subprocess.run(
+        ["git", "tag", "--list", "v*"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        return None
+    versions: list[Version] = []
+    for line in result.stdout.splitlines():
+        name = line.strip()
+        if not name:
+            continue
+        try:
+            versions.append(Version(name.lstrip("v")))
+        except InvalidVersion:
+            continue
+    if not versions:
+        return None
+    return str(max(versions))
 
 
-def _drift_message(*, current: str, latest: str) -> str:
+def check_no_orphan_tag() -> None:
+    """Raise SystemExit if the latest git tag has no matching CHANGELOG.md entry.
+
+    This catches the case where a previous run pushed a tag without leaving a
+    record in CHANGELOG.md (the v0.67.0 mishap), so the next-version
+    computation would otherwise roll forward from a version that was never
+    actually released.
+
+    No-op when either side is empty (first-time use in a fresh repo).
+    """
+    latest_tag = latest_git_tag_version()
+    latest_changelog = latest_changelog_version()
+    if latest_tag is None or latest_changelog is None:
+        return
+    if Version(latest_tag) == Version(latest_changelog):
+        return
+    raise SystemExit(
+        _drift_message(latest_tag=latest_tag, latest_changelog=latest_changelog)
+    )
+
+
+def _drift_message(*, latest_tag: str, latest_changelog: str) -> str:
     return (
-        f"\nThe version provider reports the current version as {current!r}, "
-        f"but the most recent CHANGELOG.md entry is {latest!r}.\n"
+        f"\nThe latest git tag is v{latest_tag} but the most recent "
+        f"CHANGELOG.md entry is {latest_changelog!r}.\n"
         f"\n"
-        f"This usually means a stale or orphan tag is present — for example,\n"
-        f"a leftover from a partially-completed previous release attempt — so\n"
-        f"the provider reads a version that was never actually released.\n"
-        f"Continuing would compute the next version against the stray tag and\n"
-        f"produce a release number that doesn't follow the changelog history.\n"
+        f"This usually means a stale or orphan tag was created — for example,\n"
+        f"a leftover from a partially-completed previous release attempt — that\n"
+        f"doesn't correspond to any released changelog entry. Continuing would\n"
+        f"compute the next version against the stray tag and produce a release\n"
+        f"number that doesn't follow the changelog history.\n"
         f"\n"
         f"To recover, either:\n"
-        f"  - Delete the stray tag so the provider returns to the released\n"
-        f"    version, e.g.:\n"
-        f"        git tag -d v{current}\n"
-        f"        git push origin :refs/tags/v{current}\n"
-        f"  - Or add the missing CHANGELOG.md entry for {current} if that\n"
+        f"  - Delete the stray tag so it stops being read as the latest, e.g.:\n"
+        f"        git tag -d v{latest_tag}\n"
+        f"        git push origin :refs/tags/v{latest_tag}\n"
+        f"  - Or add the missing CHANGELOG.md entry for {latest_tag} if that\n"
         f"    version really was released and the changelog is what's out of date.\n"
         f"\n"
         f"After reconciling, re-run scriv-release.\n"
@@ -177,17 +203,22 @@ def print_changelog(*, version: str) -> str:
 
 
 def tag_release(*, level: BumpLevel, config: Config, push: bool = False) -> str:
-    # By the time we tag, the preview-PR flow has already bumped the version
-    # file(s) and merged that commit to main, so `provider.current()` reflects
-    # the pending release. We just tag HEAD with that version — no second bump,
-    # no extra commit. `level` is kept in the signature so the action's
-    # "is this a release commit?" gate (which passes the detected level
-    # through) stays unchanged.
-    del level
+    # Tag-based bumping: compute the new version by bumping the provider's
+    # current() by `level`, then push that as the release tag. No file
+    # mutations. Works directly for tag-only providers (bump-my-version with
+    # no `[tool.bumpversion]`, hatch-vcs) where `current()` is the latest
+    # tag; works for file-based providers too, but the committed file may
+    # drift behind the tag — projects that need the file in sync should
+    # switch to a dynamic-version setup (hatch-vcs, setuptools-scm, etc.).
     provider = get_provider(config.version_provider)
-    version = provider.current()
-    _git.finalize(version, tag=True, commit=False, push=push)
-    return version
+    effective = apply_zero_major_policy(
+        level,
+        current_version=provider.current(),
+        policy=config.zero_major_policy,
+    )
+    new_version = provider.next(effective)
+    _git.finalize(new_version, tag=True, commit=False, push=push)
+    return new_version
 
 
 def parse_marker(body: str, *, key: str) -> BumpLevel | None:

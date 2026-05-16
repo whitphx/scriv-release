@@ -303,11 +303,8 @@ def test_compute_next_version_returns_none_when_no_fragments(
     )
 
 
-def test_tag_release_tags_current_version_without_bumping(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    # The preview-PR flow has already bumped the version file(s); tag_release
-    # just tags HEAD with whatever the provider currently reports.
+def _fake_tag_run(monkeypatch: pytest.MonkeyPatch) -> list[list[str]]:
+    """Stub subprocess.run to capture git invocations made by _git.finalize."""
     calls: list[list[str]] = []
 
     def fake_run(args: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
@@ -315,6 +312,48 @@ def test_tag_release_tags_current_version_without_bumping(
         return subprocess.CompletedProcess(args, 0, "", "")
 
     monkeypatch.setattr(subprocess, "run", fake_run)
+    return calls
+
+
+def test_tag_release_tags_bumped_version(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Tag-based bumping: tag the result of provider.next(level), not current.
+    calls = _fake_tag_run(monkeypatch)
+
+    provider = _RecordingProvider(current="1.2.3")
+    monkeypatch.setattr(orchestrate, "get_provider", lambda name: provider)
+
+    result = orchestrate.tag_release(
+        level="patch", config=Config(version_provider="test")
+    )
+
+    assert result == "next-for-patch"
+    assert calls == [["git", "tag", "vnext-for-patch"]]
+    assert provider.next_calls == ["patch"]
+    assert provider.apply_calls == []  # no file mutation at tag time
+
+
+def test_tag_release_pushes_when_requested(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = _fake_tag_run(monkeypatch)
+
+    provider = _RecordingProvider(current="1.2.3")
+    monkeypatch.setattr(orchestrate, "get_provider", lambda name: provider)
+
+    orchestrate.tag_release(
+        level="patch", config=Config(version_provider="test"), push=True
+    )
+
+    assert calls == [
+        ["git", "tag", "vnext-for-patch"],
+        ["git", "push", "--follow-tags"],
+    ]
+
+
+def test_tag_release_applies_zero_major_policy(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # `major` on a 0.x project downshifts to `minor` per the default policy,
+    # so we tag the minor-bumped version, not the major-bumped one.
+    _fake_tag_run(monkeypatch)
 
     provider = _RecordingProvider(current="0.5.0")
     monkeypatch.setattr(orchestrate, "get_provider", lambda name: provider)
@@ -323,46 +362,16 @@ def test_tag_release_tags_current_version_without_bumping(
         level="major", config=Config(version_provider="test")
     )
 
-    assert result == "0.5.0"
-    assert calls == [["git", "tag", "v0.5.0"]]
-    assert provider.apply_calls == []
+    assert result == "next-for-minor"
+    assert provider.next_calls == ["minor"]
 
 
-def test_tag_release_pushes_when_requested(monkeypatch: pytest.MonkeyPatch) -> None:
-    calls: list[list[str]] = []
+def test_tag_release_strict_passes_major_through(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _fake_tag_run(monkeypatch)
 
-    def fake_run(args: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
-        calls.append(list(args))
-        return subprocess.CompletedProcess(args, 0, "", "")
-
-    monkeypatch.setattr(subprocess, "run", fake_run)
-
-    provider = _RecordingProvider(current="1.2.3")
-    monkeypatch.setattr(orchestrate, "get_provider", lambda name: provider)
-
-    result = orchestrate.tag_release(
-        level="patch", config=Config(version_provider="test"), push=True
-    )
-
-    assert result == "1.2.3"
-    assert calls == [
-        ["git", "tag", "v1.2.3"],
-        ["git", "push", "--follow-tags"],
-    ]
-
-
-def test_tag_release_ignores_zero_major_policy(monkeypatch: pytest.MonkeyPatch) -> None:
-    # Zero-major downshift is applied at preview-PR time (in compute_next_version),
-    # not at tag time. Whatever ended up in the bumped file is what we tag.
-    calls: list[list[str]] = []
-
-    def fake_run(args: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
-        calls.append(list(args))
-        return subprocess.CompletedProcess(args, 0, "", "")
-
-    monkeypatch.setattr(subprocess, "run", fake_run)
-
-    provider = _RecordingProvider(current="0.6.0")
+    provider = _RecordingProvider(current="0.5.0")
     monkeypatch.setattr(orchestrate, "get_provider", lambda name: provider)
 
     result = orchestrate.tag_release(
@@ -370,8 +379,8 @@ def test_tag_release_ignores_zero_major_policy(monkeypatch: pytest.MonkeyPatch) 
         config=Config(version_provider="test", zero_major_policy="strict"),
     )
 
-    assert result == "0.6.0"
-    assert calls == [["git", "tag", "v0.6.0"]]
+    assert result == "next-for-major"
+    assert provider.next_calls == ["major"]
 
 
 def _setup_with_changelog_and_fragment(
@@ -401,40 +410,52 @@ def test_latest_changelog_version_returns_none_when_no_entries(
     assert orchestrate.latest_changelog_version() is None
 
 
-def test_check_provider_in_sync_passes_on_match(
+def test_check_no_orphan_tag_passes_on_match(
     tmp_path: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _setup_scriv_repo(tmp_path, _CHANGELOG_WITH_065)
     monkeypatch.chdir(tmp_path)
-    # Should not raise — "v"-prefix is treated as equal to the changelog "0.65.1".
-    orchestrate.check_provider_in_sync_with_changelog(current_version="v0.65.1")
+    monkeypatch.setattr(orchestrate, "latest_git_tag_version", lambda: "0.65.1")
+    # Should not raise.
+    orchestrate.check_no_orphan_tag()
 
 
-def test_check_provider_in_sync_skips_when_no_changelog_entries(
+def test_check_no_orphan_tag_skips_when_no_changelog_entries(
     tmp_path: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    # Models the "first introduction" case: scriv-release is being added to a
-    # repo that has no changelog history yet, so there's nothing to compare
-    # the provider against.
+    # Models the "first introduction" case: changelog has no entries yet.
     _setup_scriv_repo(tmp_path, "# Changelog\n\n<!-- scriv-insert-here -->\n")
     monkeypatch.chdir(tmp_path)
-    orchestrate.check_provider_in_sync_with_changelog(current_version="0.1.0")
+    monkeypatch.setattr(orchestrate, "latest_git_tag_version", lambda: "0.1.0")
+    orchestrate.check_no_orphan_tag()
 
 
-def test_check_provider_in_sync_raises_on_drift(
+def test_check_no_orphan_tag_skips_when_no_tags(
+    tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # First release ever — there are no tags yet, only a CHANGELOG entry that
+    # the imminent tag-push will match. Drift check shouldn't fire here.
+    _setup_scriv_repo(tmp_path, _CHANGELOG_WITH_065)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(orchestrate, "latest_git_tag_version", lambda: None)
+    orchestrate.check_no_orphan_tag()
+
+
+def test_check_no_orphan_tag_raises_on_drift(
     tmp_path: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _setup_scriv_repo(tmp_path, _CHANGELOG_WITH_065)
     monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(orchestrate, "latest_git_tag_version", lambda: "0.67.0")
     with pytest.raises(SystemExit) as exc:
-        orchestrate.check_provider_in_sync_with_changelog(current_version="0.67.0")
+        orchestrate.check_no_orphan_tag()
     msg = str(exc.value)
-    assert "0.67.0" in msg
+    assert "v0.67.0" in msg
     assert "0.65.1" in msg
     assert "git tag -d v0.67.0" in msg
 
 
-def test_compute_next_version_raises_on_provider_drift(
+def test_compute_next_version_raises_on_orphan_tag(
     tmp_path: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _setup_with_changelog_and_fragment(
@@ -443,17 +464,18 @@ def test_compute_next_version_raises_on_provider_drift(
         ("a.md", "### Fixed\n\n- a fix\n"),
     )
     monkeypatch.chdir(tmp_path)
-    provider = _RecordingProvider(current="0.67.0")
+    monkeypatch.setattr(orchestrate, "latest_git_tag_version", lambda: "0.67.0")
+    provider = _RecordingProvider(current="0.65.1")
     monkeypatch.setattr(orchestrate, "get_provider", lambda name: provider)
 
     with pytest.raises(SystemExit) as exc:
         orchestrate.compute_next_version(config=Config(version_provider="test"))
-    assert "0.67.0" in str(exc.value)
+    assert "v0.67.0" in str(exc.value)
     assert "0.65.1" in str(exc.value)
-    assert provider.next_calls == []  # we bail before computing next
+    assert provider.next_calls == []  # bail before computing next
 
 
-def test_compute_next_version_passes_when_provider_matches_changelog(
+def test_compute_next_version_passes_when_tag_matches_changelog(
     tmp_path: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _setup_with_changelog_and_fragment(
@@ -462,6 +484,7 @@ def test_compute_next_version_passes_when_provider_matches_changelog(
         ("a.md", "### Fixed\n\n- a fix\n"),
     )
     monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(orchestrate, "latest_git_tag_version", lambda: "0.65.1")
     provider = _RecordingProvider(current="0.65.1")
     monkeypatch.setattr(orchestrate, "get_provider", lambda name: provider)
 
@@ -477,11 +500,11 @@ def test_collect_for_release_raises_on_collision(
         "### Fixed\n\n- a fix\n", encoding="utf-8"
     )
     monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(orchestrate, "latest_git_tag_version", lambda: "0.65.1")
 
     # Contrived provider whose `next()` returns the latest changelog entry's
-    # version. `current()` matches the changelog so the drift guard doesn't
-    # trip — this isolates the collision path: the candidate is already
-    # present in CHANGELOG.md.
+    # version — the candidate is already present in CHANGELOG.md, isolating
+    # the collision path.
     class FakeProvider:
         name = "test"
 
@@ -502,35 +525,3 @@ def test_collect_for_release_raises_on_collision(
     msg = str(exc.value)
     assert "0.65.1" in msg
     assert "git tag -a v0.65.1" in msg  # collision-specific recovery hint
-
-
-def test_collect_for_release_bumps_files_after_scriv_collect(
-    tmp_path: Any, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    # The preview-PR commit must capture both the new CHANGELOG entry and the
-    # version-file bump in one commit, so `scriv collect` is followed by
-    # provider.apply with tag/commit/push all False — the actual commit
-    # happens later in `open-preview-pr.sh`.
-    _setup_with_changelog_and_fragment(
-        tmp_path, _CHANGELOG_WITH_065, ("a.md", "### Fixed\n\n- a fix\n")
-    )
-    monkeypatch.chdir(tmp_path)
-
-    subprocess_calls: list[list[str]] = []
-
-    def fake_run(args: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
-        subprocess_calls.append(list(args))
-        return subprocess.CompletedProcess(args, 0, "", "")
-
-    monkeypatch.setattr(subprocess, "run", fake_run)
-
-    provider = _RecordingProvider(current="0.65.1")
-    monkeypatch.setattr(orchestrate, "get_provider", lambda name: provider)
-
-    result = orchestrate.collect_for_release(config=Config(version_provider="test"))
-
-    assert result == "next-for-patch"
-    assert subprocess_calls == [
-        ["scriv", "collect", "--version", "next-for-patch"],
-    ]
-    assert provider.apply_calls == [("patch", False, False, False)]
