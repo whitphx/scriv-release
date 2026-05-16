@@ -55,6 +55,15 @@ build-backend = "hatchling.build"
 
 [tool.hatch.version]
 source = "vcs"
+# GitHub Actions checks out the action's source under
+# /home/runner/work/_actions/<owner>/<repo>/<sha>/ WITHOUT a .git directory,
+# so `pip install ${GITHUB_ACTION_PATH}[bump-my-version]` (action.yml's
+# install step) would fail with "setuptools-scm was unable to detect
+# version". The fallback lets the install succeed; the action only needs
+# the package to be importable, not to know its own version string.
+# Real PyPI publishes build from a tagged checkout *with* .git, so they
+# still get the right version from the tag.
+fallback-version = "0.0.0"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/scriv_release"]
