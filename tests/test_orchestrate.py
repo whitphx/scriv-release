@@ -315,63 +315,64 @@ def _fake_tag_run(monkeypatch: pytest.MonkeyPatch) -> list[list[str]]:
     return calls
 
 
-def test_tag_release_tags_bumped_version(monkeypatch: pytest.MonkeyPatch) -> None:
-    # Tag-based bumping: tag the result of provider.next(level), not current.
+def test_tag_release_tags_latest_changelog_version(
+    tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # tag_release reads the version to tag from CHANGELOG.md — the title of
+    # the entry the preview-PR step just wrote IS the version.
+    _setup_scriv_repo(tmp_path, _CHANGELOG_WITH_065)
+    monkeypatch.chdir(tmp_path)
     calls = _fake_tag_run(monkeypatch)
-
-    provider = _RecordingProvider(current="1.2.3")
-    monkeypatch.setattr(orchestrate, "get_provider", lambda name: provider)
 
     result = orchestrate.tag_release(
         level="patch", config=Config(version_provider="test")
     )
 
-    assert result == "next-for-patch"
-    assert calls == [["git", "tag", "vnext-for-patch"]]
-    assert provider.next_calls == ["patch"]
-    assert provider.apply_calls == []  # no file mutation at tag time
+    assert result == "0.65.1"
+    assert calls == [["git", "tag", "v0.65.1"]]
 
 
-def test_tag_release_pushes_when_requested(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_tag_release_pushes_when_requested(
+    tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _setup_scriv_repo(tmp_path, _CHANGELOG_WITH_065)
+    monkeypatch.chdir(tmp_path)
     calls = _fake_tag_run(monkeypatch)
-
-    provider = _RecordingProvider(current="1.2.3")
-    monkeypatch.setattr(orchestrate, "get_provider", lambda name: provider)
 
     orchestrate.tag_release(
         level="patch", config=Config(version_provider="test"), push=True
     )
 
     assert calls == [
-        ["git", "tag", "vnext-for-patch"],
+        ["git", "tag", "v0.65.1"],
         ["git", "push", "--follow-tags"],
     ]
 
 
-def test_tag_release_applies_zero_major_policy(
-    monkeypatch: pytest.MonkeyPatch,
+def test_tag_release_raises_when_no_changelog_entries(
+    tmp_path: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    # `major` on a 0.x project downshifts to `minor` per the default policy,
-    # so we tag the minor-bumped version, not the major-bumped one.
-    _fake_tag_run(monkeypatch)
+    # A scriv-release-style release flow always writes a CHANGELOG entry
+    # before tagging. If we're asked to tag without one, something's wrong.
+    _setup_scriv_repo(tmp_path, "# Changelog\n\n<!-- scriv-insert-here -->\n")
+    monkeypatch.chdir(tmp_path)
 
-    provider = _RecordingProvider(current="0.5.0")
-    monkeypatch.setattr(orchestrate, "get_provider", lambda name: provider)
-
-    result = orchestrate.tag_release(
-        level="major", config=Config(version_provider="test")
-    )
-
-    assert result == "next-for-minor"
-    assert provider.next_calls == ["minor"]
+    with pytest.raises(SystemExit) as exc:
+        orchestrate.tag_release(level="patch", config=Config(version_provider="test"))
+    assert "CHANGELOG" in str(exc.value)
 
 
-def test_tag_release_strict_passes_major_through(
-    monkeypatch: pytest.MonkeyPatch,
+def test_tag_release_ignores_provider_and_zero_major_policy(
+    tmp_path: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    _fake_tag_run(monkeypatch)
-
-    provider = _RecordingProvider(current="0.5.0")
+    # The provider's current/next and the zero-major policy are all irrelevant
+    # at tag time — the changelog entry's title is the version, full stop.
+    # The policy was already applied at preview-PR time (compute_next_version),
+    # so whatever ended up in the entry title is what we tag.
+    _setup_scriv_repo(tmp_path, _CHANGELOG_WITH_065)
+    monkeypatch.chdir(tmp_path)
+    calls = _fake_tag_run(monkeypatch)
+    provider = _RecordingProvider(current="9.9.9")  # ignored
     monkeypatch.setattr(orchestrate, "get_provider", lambda name: provider)
 
     result = orchestrate.tag_release(
@@ -379,8 +380,10 @@ def test_tag_release_strict_passes_major_through(
         config=Config(version_provider="test", zero_major_policy="strict"),
     )
 
-    assert result == "next-for-major"
-    assert provider.next_calls == ["major"]
+    assert result == "0.65.1"
+    assert calls == [["git", "tag", "v0.65.1"]]
+    assert provider.next_calls == []
+    assert provider.apply_calls == []
 
 
 def _setup_with_changelog_and_fragment(
@@ -546,3 +549,39 @@ def test_collect_for_release_raises_on_collision(
     msg = str(exc.value)
     assert "0.65.1" in msg
     assert "git tag -a v0.65.1" in msg  # collision-specific recovery hint
+
+
+def test_collect_for_release_bumps_files_after_scriv_collect(
+    tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The preview-PR commit captures both the new CHANGELOG entry and the
+    # version-file bump in a single commit. For file-based providers (uv,
+    # bump-my-version with [tool.bumpversion], hatch with a non-vcs source,
+    # shell) provider.apply() mutates the file; for tag-only providers
+    # (bump-my-version with no config, hatch-vcs) it's a no-op. Either way
+    # tag_release later reads the version from CHANGELOG.md, so the two
+    # paths converge on the right tag.
+    _setup_with_changelog_and_fragment(
+        tmp_path, _CHANGELOG_WITH_065, ("a.md", "### Fixed\n\n- a fix\n")
+    )
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(orchestrate, "latest_git_tag_version", lambda: "0.65.1")
+
+    subprocess_calls: list[list[str]] = []
+
+    def fake_run(args: list[str], **kwargs: Any) -> subprocess.CompletedProcess[str]:
+        subprocess_calls.append(list(args))
+        return subprocess.CompletedProcess(args, 0, "", "")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+
+    provider = _RecordingProvider(current="0.65.1")
+    monkeypatch.setattr(orchestrate, "get_provider", lambda name: provider)
+
+    result = orchestrate.collect_for_release(config=Config(version_provider="test"))
+
+    assert result == "next-for-patch"
+    assert subprocess_calls == [
+        ["scriv", "collect", "--version", "next-for-patch"],
+    ]
+    assert provider.apply_calls == [("patch", False, False, False)]

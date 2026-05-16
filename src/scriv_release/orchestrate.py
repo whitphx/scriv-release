@@ -30,7 +30,7 @@ def collect_for_release(*, config: Config) -> str | None:
     result = compute_next_version(config=config)
     if result is None:
         return None
-    _, next_version = result
+    level, next_version = result
     existing = detect_version_collision(next_version)
     if existing is not None:
         raise SystemExit(_collision_message(next_version, existing))
@@ -38,6 +38,17 @@ def collect_for_release(*, config: Config) -> str | None:
         ["scriv", "collect", "--version", next_version],
         check=True,
     )
+    # If the provider can bump version-bearing files (uv with a static
+    # [project].version, bump-my-version with [tool.bumpversion], hatch with a
+    # non-vcs source, shell with an apply command), do that here so the
+    # Changelog Preview PR's commit carries both the new CHANGELOG entry and
+    # the bumped file. For tag-only providers (bump-my-version with no
+    # config, hatch-vcs) this is a no-op — there's no file to bump.
+    # Either way, tag_release reads the version to tag from CHANGELOG.md,
+    # so the two paths converge on the right tag without any provider-style
+    # detection here.
+    provider = get_provider(config.version_provider)
+    provider.apply(level, tag=False, commit=False, push=False)
     return next_version
 
 
@@ -222,22 +233,24 @@ def print_changelog(*, version: str) -> str:
 
 
 def tag_release(*, level: BumpLevel, config: Config, push: bool = False) -> str:
-    # Tag-based bumping: compute the new version by bumping the provider's
-    # current() by `level`, then push that as the release tag. No file
-    # mutations. Works directly for tag-only providers (bump-my-version with
-    # no `[tool.bumpversion]`, hatch-vcs) where `current()` is the latest
-    # tag; works for file-based providers too, but the committed file may
-    # drift behind the tag — projects that need the file in sync should
-    # switch to a dynamic-version setup (hatch-vcs, setuptools-scm, etc.).
-    provider = get_provider(config.version_provider)
-    effective = apply_zero_major_policy(
-        level,
-        current_version=provider.current(),
-        policy=config.zero_major_policy,
-    )
-    new_version = provider.next(effective)
-    _git.finalize(new_version, tag=True, commit=False, push=push)
-    return new_version
+    # Tag whatever the latest CHANGELOG.md entry says — that title is what
+    # `scriv collect` (in collect_for_release) just wrote during the preview
+    # PR, so it IS the version we're releasing. This is provider-agnostic:
+    # for file-based providers the preview PR also bumped the version file
+    # to the same value, and for tag-only providers nothing else needed
+    # bumping. Either way the changelog is the single source of truth.
+    # `level` is kept in the signature so the action's "is this a release
+    # commit?" gate (which passes the detected level through) stays
+    # unchanged.
+    del level
+    version = latest_changelog_version()
+    if version is None:
+        raise SystemExit(
+            "No version entries in CHANGELOG.md to tag. tag_release is meant "
+            "to run after a Changelog Preview PR merge, which adds the entry."
+        )
+    _git.finalize(version, tag=True, commit=False, push=push)
+    return version
 
 
 def parse_marker(body: str, *, key: str) -> BumpLevel | None:
