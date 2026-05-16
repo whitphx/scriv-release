@@ -2,6 +2,13 @@
 
 <!-- scriv-insert-here -->
 
+<a id='changelog-0.6.1'></a>
+## 0.6.1 — 2026-05-16
+
+### Fixed
+
+- Expand the drift-guard error message to cover the "latest git tag is behind the most recent CHANGELOG.md entry" case (previous release wrote the entry but never pushed the tag — usually because the tag step crashed mid-flight). The previous wording only described the opposite "tag is ahead of changelog" direction (orphan/stray tag), leaving readers in the "tag is behind" case to figure the recovery out themselves. The message now prints the right `git tag -a v{version} <commit> -m '...' && git push origin v{version}` hint when the tag lags the changelog, and the existing "delete the stray tag" hint when the tag is ahead.
+
 <a id='changelog-0.6.0'></a>
 ## 0.6.0 — 2026-05-16
 
