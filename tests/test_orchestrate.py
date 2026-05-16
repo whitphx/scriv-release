@@ -441,9 +441,11 @@ def test_check_no_orphan_tag_skips_when_no_tags(
     orchestrate.check_no_orphan_tag()
 
 
-def test_check_no_orphan_tag_raises_on_drift(
+def test_check_no_orphan_tag_raises_when_tag_is_ahead(
     tmp_path: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    # Tag ahead of changelog → orphan/stray tag. Recovery is "delete the
+    # stray tag" or "backfill the changelog entry".
     _setup_scriv_repo(tmp_path, _CHANGELOG_WITH_065)
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(orchestrate, "latest_git_tag_version", lambda: "0.67.0")
@@ -453,6 +455,25 @@ def test_check_no_orphan_tag_raises_on_drift(
     assert "v0.67.0" in msg
     assert "0.65.1" in msg
     assert "git tag -d v0.67.0" in msg
+    assert "git tag -a" not in msg  # the "create tag" hint should NOT show
+
+
+def test_check_no_orphan_tag_raises_when_tag_is_behind(
+    tmp_path: Any, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Tag behind changelog → previous release added the entry but never
+    # tagged. Recovery is "tag the corresponding commit" or "rewind the
+    # changelog entry".
+    _setup_scriv_repo(tmp_path, _CHANGELOG_WITH_065)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(orchestrate, "latest_git_tag_version", lambda: "0.65.0")
+    with pytest.raises(SystemExit) as exc:
+        orchestrate.check_no_orphan_tag()
+    msg = str(exc.value)
+    assert "v0.65.0" in msg
+    assert "0.65.1" in msg
+    assert "git tag -a v0.65.1" in msg
+    assert "git tag -d" not in msg  # the "delete the stray tag" hint should NOT show
 
 
 def test_compute_next_version_raises_on_orphan_tag(

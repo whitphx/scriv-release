@@ -150,25 +150,44 @@ def check_no_orphan_tag() -> None:
 
 
 def _drift_message(*, latest_tag: str, latest_changelog: str) -> str:
-    return (
+    header = (
         f"\nThe latest git tag is v{latest_tag} but the most recent "
-        f"CHANGELOG.md entry is {latest_changelog!r}.\n"
-        f"\n"
-        f"This usually means a stale or orphan tag was created — for example,\n"
-        f"a leftover from a partially-completed previous release attempt — that\n"
-        f"doesn't correspond to any released changelog entry. Continuing would\n"
-        f"compute the next version against the stray tag and produce a release\n"
-        f"number that doesn't follow the changelog history.\n"
-        f"\n"
-        f"To recover, either:\n"
-        f"  - Delete the stray tag so it stops being read as the latest, e.g.:\n"
-        f"        git tag -d v{latest_tag}\n"
-        f"        git push origin :refs/tags/v{latest_tag}\n"
-        f"  - Or add the missing CHANGELOG.md entry for {latest_tag} if that\n"
-        f"    version really was released and the changelog is what's out of date.\n"
-        f"\n"
-        f"After reconciling, re-run scriv-release.\n"
+        f"CHANGELOG.md entry is {latest_changelog!r}.\n\n"
     )
+    footer = "\nAfter reconciling, re-run scriv-release.\n"
+    if Version(latest_tag) > Version(latest_changelog):
+        body = (
+            f"This usually means a stale or orphan tag was created — for example,\n"
+            f"a leftover from a partially-completed previous release attempt — that\n"
+            f"doesn't correspond to any released changelog entry. Continuing would\n"
+            f"compute the next version against the stray tag and produce a release\n"
+            f"number that doesn't follow the changelog history.\n"
+            f"\n"
+            f"To recover, either:\n"
+            f"  - Delete the stray tag so it stops being read as the latest, e.g.:\n"
+            f"        git tag -d v{latest_tag}\n"
+            f"        git push origin :refs/tags/v{latest_tag}\n"
+            f"  - Or add the missing CHANGELOG.md entry for {latest_tag} if that\n"
+            f"    version really was released and the changelog is what's out of date.\n"
+        )
+    else:
+        body = (
+            f"This usually means a previous release wrote the changelog entry\n"
+            f"for {latest_changelog} but never pushed the matching tag — typically\n"
+            f"because the tag-release step crashed mid-flight. Continuing would\n"
+            f"compute a next-version that conflicts with the unreleased entry.\n"
+            f"\n"
+            f"To recover, either:\n"
+            f"  - Tag the commit that introduced the {latest_changelog!r} entry\n"
+            f'    (typically the merge of the previous "Changelog Preview" PR) and\n'
+            f"    push the tag, e.g.:\n"
+            f"        git tag -a v{latest_changelog} <commit> -m 'Release {latest_changelog}'\n"
+            f"        git push origin v{latest_changelog}\n"
+            f"  - Or remove the {latest_changelog!r} entry from CHANGELOG.md if that\n"
+            f"    version was never actually released and the changelog is what's\n"
+            f"    out of date.\n"
+        )
+    return header + body + footer
 
 
 def _collision_message(version: str, existing: str) -> str:

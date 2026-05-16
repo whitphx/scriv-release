@@ -1,6 +1,6 @@
 [project]
 name = "scriv-release"
-version = "0.5.1"
+version = "0.6.0"
 description = "Changesets-style release automation on top of scriv"
 readme = "README.md"
 license = "MIT"
